@@ -44,18 +44,20 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 body {
-    font-family: var(--font-body);
-    background-color: var(--color-bg);
-    background-image:
-      radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.25) 0%, transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.2)  0%, transparent 45%);
-    background-attachment: fixed;
-    color: var(--color-text);
-    line-height: 1.6;
-    min-height: 100vh;
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.2)  0%, transparent 45%);
+  background-attachment: fixed;
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* ── Global Buttons ────────────────────────────────────────── */
