@@ -1,0 +1,92 @@
+<article class="ticket" [style.--genre-color]="accentColor()">
+
+  <!-- Left stub: artist initials + barcode decoration -->
+  <div class="ticket__stub">
+    <span class="ticket__stub-initials">{{ initials() }}</span>
+    <div class="ticket__barcode">
+      @for (h of [14,20,28,14,28,20,14,28]; track h) {
+        <span class="ticket__bar" [style.height.px]="h"></span>
+      }
+    </div>
+  </div>
+
+  <!-- Perforation -->
+  <div class="ticket__perf" aria-hidden="true"></div>
+
+  <!-- Main body -->
+  <div class="ticket__body">
+
+    <!-- Escenario badge (only real field available) -->
+    <div class="ticket__header">
+      <span class="ticket__genre-badge">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        </svg>
+        {{ espectaculo().escenario }}
+      </span>
+
+      <!-- Show sold-out / last seats warning eagerly -->
+      @if (info() && info()!.libres === 0) {
+        <span class="ticket__demand-badge ticket__demand-badge--soldout">Agotado</span>
+      } @else if (info() && info()!.libres < info()!.total * 0.1) {
+        <span class="ticket__demand-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z"/>
+          </svg>
+          Últimas entradas
+        </span>
+      }
+    </div>
+
+    <!-- Artist name (the primary identifier from backend) -->
+    <div class="ticket__title-block">
+      <h2 class="ticket__artist">{{ espectaculo().artista }}</h2>
+    </div>
+
+    <!-- Date / time row — from fecha ISO string -->
+    <div class="ticket__info-row">
+      <div class="ticket__info-cell">
+        <span class="ticket__info-label">FECHA</span>
+        <span class="ticket__info-value">{{ fechaLabel() }}</span>
+      </div>
+      <div class="ticket__info-divider" aria-hidden="true"></div>
+      <div class="ticket__info-cell">
+        <span class="ticket__info-label">HORA</span>
+        <span class="ticket__info-value">{{ hora() }}</span>
+      </div>
+      @if (info()) {
+        <div class="ticket__info-divider" aria-hidden="true"></div>
+        <div class="ticket__info-cell">
+          <span class="ticket__info-label">LIBRES</span>
+          <span class="ticket__info-value">{{ info()!.libres }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Ocupation bar (Gestalt: continuity / proximity) -->
+    @if (info()) {
+      <div class="ticket__ocupation">
+        <div class="ticket__ocupation-bar">
+          <div class="ticket__ocupation-fill" [style.width.%]="ocupacionPct()"></div>
+        </div>
+        <span class="ticket__ocupation-label">{{ ocupacionPct() }}% ocupado</span>
+      </div>
+    }
+
+    <!-- Footer: price range + status -->
+    <div class="ticket__footer">
+      <div class="ticket__price-block">
+        @if (info() === null && !infoError()) {
+          <span class="ticket__price ticket__price--loading">···</span>
+        } @else if (infoError()) {
+          <span class="ticket__price ticket__price--error">Sin datos</span>
+        } @else {
+          <span class="ticket__price-label">Entradas</span>
+          <span class="ticket__price">Ver precios</span>
+        }
+      </div>
+      <span class="ticket__status" [class]="statusClass()">{{ statusLabel() }}</span>
+    </div>
+
+  </div>
+</article>
