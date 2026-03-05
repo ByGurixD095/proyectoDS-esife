@@ -1,3 +1,6 @@
+
+Copy
+
 /* ── Hero ───────────────────────────────────────────────────── */
 .hero {
   position: relative;
@@ -130,6 +133,13 @@
 }
 
 /* ── Events Grid ────────────────────────────────────────────── */
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 1fr);
+  gap: var(--space-md)
+;
+}
+
 .events-grid--by-event {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
