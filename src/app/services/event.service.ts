@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap, catchError, of, forkJoin, map } from 'rxjs';
+import { Observable, tap, catchError, of } from 'rxjs';
 import {
   Espectaculo, Escenario, Entrada, EntradaInfo,
   ReservaResponse, CompraResponse, ColaResponse,
@@ -58,15 +58,36 @@ export class EventService {
     this._viewMode.set(mode);
   }
 
-  // Searching triggers a real HTTP call to /espectaculos?artist=...
-  // An empty query reloads all.
+  // Busca primero por artista; si no hay resultados, intenta por escenario;
+  // si tampoco hay, deja la lista vacía. Query vacío recarga todo.
   setSearchQuery(query: string): void {
     this._searchQuery.set(query);
-    if (query.trim()) {
-      this.searchByArtist(query);
-    } else {
+    if (!query.trim()) {
       this.loadAll();
+      return;
     }
+
+    this._loading.set(true);
+    this._error.set(null);
+
+    // 1º intento: por artista
+    const params = new HttpParams().set('artist', query);
+    this.http.get<Espectaculo[]>(`${API}/espectaculos`, { params }).pipe(
+      catchError(() => of([]))
+    ).subscribe(data => {
+      if (data && data.length > 0) {
+        this._espectaculos.set(data);
+        this._loading.set(false);
+      } else {
+        // 2º intento: por nombre de escenario
+        this.http.get<Espectaculo[]>(`${API}/espectaculos/${query}`).pipe(
+          catchError(() => of([]))
+        ).subscribe(data2 => {
+          this._espectaculos.set(data2 ?? []);
+          this._loading.set(false);
+        });
+      }
+    });
   }
 
   // ── Espectaculos ─────────────────────────────────────────
@@ -102,6 +123,26 @@ export class EventService {
         return of([]);
       })
     );
+    req$.subscribe();
+    return req$;
+  }
+
+  searchByEscenario(escenario: string): Observable<Espectaculo[]> {
+    this._loading.set(true);
+
+    const req$ = this.http.get<Espectaculo[]>(`${API}/espectaculos/${escenario}`).pipe(
+      tap(data => {
+        this._espectaculos.set(data);
+        this._loading.set(false);
+      }),
+      catchError(() => {
+        // 404 = no hay resultados o error de red
+        this._espectaculos.set([]);
+        this._loading.set(false);
+        return of([]);
+      })
+    );
+
     req$.subscribe();
     return req$;
   }

@@ -6,14 +6,14 @@
 
 /* ── Design Tokens ───────────────────────────────────────────── */
 :root {
-  /* Colors – dark editorial theme */
-  --color-bg:             #0f0f11;
-  --color-surface:        #16161a;
-  --color-surface-raised: #1e1e24;
-  --color-border:         #2a2a33;
-  --color-text:           #f0eff4;
-  --color-text-muted:     #8888a0;
-  --color-accent:         #e07b39;   /* warm amber-orange */
+  --color-bg:             #0f172a;
+  --color-surface:        rgba(255, 255, 255, 0.03);
+  --color-surface-raised: rgba(255, 255, 255, 0.06);
+  --color-border:         rgba(255, 255, 255, 0.1);
+  --color-text:           #f8fafc;
+  --color-text-muted:     #94a3b8;
+  --color-accent:         #8b5cf6;
+  --color-accent-2:       #ec4899;
 
   /* Typography */
   --font-display: 'Syne', sans-serif;
@@ -47,11 +47,15 @@ html {
 }
 
 body {
-  font-family: var(--font-body);
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.6;
-  min-height: 100vh;
+    font-family: var(--font-body);
+    background-color: var(--color-bg);
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.25) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.2)  0%, transparent 45%);
+    background-attachment: fixed;
+    color: var(--color-text);
+    line-height: 1.6;
+    min-height: 100vh;
 }
 
 /* ── Global Buttons ────────────────────────────────────────── */
@@ -72,14 +76,16 @@ body {
 }
 
 .btn--primary {
-  background: var(--color-accent);
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-2));
   color: #fff;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+  border-radius: 16px;
 }
 
 .btn--primary:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 0 35px rgba(139, 92, 246, 0.5);
+  filter: none;
 }
 
 .btn--ghost {
