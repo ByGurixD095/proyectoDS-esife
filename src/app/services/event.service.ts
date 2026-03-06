@@ -9,56 +9,77 @@ import {
 
 const API = 'http://localhost:8080';
 
-// ── Session-scoped prereserva store ──────────────────────────
-// Keyed by entradaId → token returned by backend
-// Stored in sessionStorage so it survives page refreshes but
-// dies when the tab is closed (correct for a 10-min prereserva)
-const SESSION_KEY = 'prereservas';
+// ── Session storage keys ──────────────────────────────────────
+// PRERESERVA_TOKEN_KEY: the single UUID shared across all entries
+//   in the current cart session. The backend groups all entries
+//   that share the same token, so we must reuse it on every
+//   subsequent call.  Empty string = no session started yet.
+//
+// PRERESERVA_IDS_KEY: JSON array of entradaIds currently in cart.
+//   Used to restore the cart state on page refresh within the
+//   10-minute window.
 
-function loadPrereservas(): Map<number, string> {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return new Map();
-    return new Map(JSON.parse(raw) as [number, string][]);
-  } catch {
-    return new Map();
-  }
+const TOKEN_KEY = 'prereserva_token';   // string UUID | ''
+const IDS_KEY   = 'prereserva_ids';     // JSON: number[]
+
+function loadToken(): string {
+  return sessionStorage.getItem(TOKEN_KEY) ?? '';
 }
 
-function savePrereservas(map: Map<number, string>): void {
+function loadIds(): Set<number> {
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(Array.from(map.entries())));
-  } catch { /* quota exceeded – silently ignore */ }
+    const raw = sessionStorage.getItem(IDS_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as number[]);
+  } catch { return new Set(); }
+}
+
+function persistToken(token: string): void {
+  sessionStorage.setItem(TOKEN_KEY, token);
+}
+
+function persistIds(ids: Set<number>): void {
+  sessionStorage.setItem(IDS_KEY, JSON.stringify(Array.from(ids)));
 }
 
 @Injectable({ providedIn: 'root' })
 export class EventService {
   private http = inject(HttpClient);
 
-  // ── Prereserva token store (entradaId → token) ────────────
-  // This is the source of truth for what the user has "in cart"
-  private _prereservas = signal<Map<number, string>>(loadPrereservas());
-  prereservas = this._prereservas.asReadonly();
+  // ── Prereserva session state ──────────────────────────────
+  //
+  // prereservaToken: the SINGLE UUID the backend has assigned to
+  //   this browser session. All cart entries share this token.
+  //   Empty string means "no session started yet".
+  //
+  // cartIds: set of entradaIds the user has added to cart.
+  //   Source of truth for what to show as "selected".
+  //
+  private _prereservaToken = signal<string>(loadToken());
+  private _cartIds         = signal<Set<number>>(loadIds());
+
+  /** Read-only token exposed for the purchase flow */
+  prereservaToken = this._prereservaToken.asReadonly();
+
+  /** Read-only set of IDs in cart */
+  cartIds = this._cartIds.asReadonly();
 
   // ── UI state ──────────────────────────────────────────────
-  private _viewMode    = signal<ViewMode>('by-event');
-  private _searchQuery = signal<string>('');
+  private _viewMode     = signal<ViewMode>('by-event');
+  private _searchQuery  = signal<string>('');
   private _espectaculos = signal<Espectaculo[]>([]);
   private _escenarios   = signal<Escenario[]>([]);
   private _loading      = signal<boolean>(false);
   private _error        = signal<string | null>(null);
 
-  viewMode      = this._viewMode.asReadonly();
-  searchQuery   = this._searchQuery.asReadonly();
-  espectaculos  = this._espectaculos.asReadonly();
-  escenarios    = this._escenarios.asReadonly();
-  loading       = this._loading.asReadonly();
-  error         = this._error.asReadonly();
+  viewMode     = this._viewMode.asReadonly();
+  searchQuery  = this._searchQuery.asReadonly();
+  espectaculos = this._espectaculos.asReadonly();
+  escenarios   = this._escenarios.asReadonly();
+  loading      = this._loading.asReadonly();
+  error        = this._error.asReadonly();
 
-  // ── Derived: set of prereserved entrada IDs ───────────────
-  prereservedIds = computed(() => new Set(this._prereservas().keys()));
-
-  // ── Client-side filter ────────────────────────────────────
+  // ── Filtered / grouped espectaculos ──────────────────────
   filteredEspectaculos = computed(() => {
     const q = this._searchQuery().toLowerCase().trim();
     if (!q) return this._espectaculos();
@@ -76,12 +97,11 @@ export class EventService {
       map.get(key)!.push(e);
     }
     return Array.from(map.entries()).map(([escenarioNombre, espectaculos]) => ({
-      escenarioNombre,
-      espectaculos,
+      escenarioNombre, espectaculos
     }));
   });
 
-  // ── Public API ────────────────────────────────────────────
+  // ── View / search ─────────────────────────────────────────
 
   setViewMode(mode: ViewMode): void { this._viewMode.set(mode); }
 
@@ -96,7 +116,7 @@ export class EventService {
     this.http.get<Espectaculo[]>(`${API}/espectaculos`, { params }).pipe(
       catchError(() => of([]))
     ).subscribe(data => {
-      if (data && data.length > 0) {
+      if (data?.length > 0) {
         this._espectaculos.set(data);
         this._loading.set(false);
       } else {
@@ -127,8 +147,9 @@ export class EventService {
 
   searchByArtist(artist: string): Observable<Espectaculo[]> {
     this._loading.set(true);
-    const params = new HttpParams().set('artist', artist);
-    const req$ = this.http.get<Espectaculo[]>(`${API}/espectaculos`, { params }).pipe(
+    const req$ = this.http.get<Espectaculo[]>(`${API}/espectaculos`, {
+      params: new HttpParams().set('artist', artist)
+    }).pipe(
       tap(data => { this._espectaculos.set(data); this._loading.set(false); }),
       catchError(() => { this._espectaculos.set([]); this._loading.set(false); return of([]); })
     );
@@ -167,6 +188,15 @@ export class EventService {
     return this.http.get<Entrada[]>(`${API}/entradas/espectaculos/${espectaculoId}`);
   }
 
+  /**
+   * Fetch entries currently RESERVADA under the given prereserva token.
+   * Used on page load to restore cart state from an active session.
+   * Always returns 200 (empty array if token is unknown/expired).
+   */
+  getEntradasByToken(token: string): Observable<Entrada[]> {
+    return this.http.get<Entrada[]>(`${API}/entradas/prerreserva/${token}`);
+  }
+
   getEntradaInfo(espectaculoId: number): Observable<EntradaInfo> {
     return this.http.get<EntradaInfo>(`${API}/entradas/espectaculo/${espectaculoId}/info`);
   }
@@ -175,47 +205,76 @@ export class EventService {
     return this.http.get<number>(`${API}/entradas/espectaculos/${espectaculoId}/cantidad`);
   }
 
-  // ── Prereserva (the real cart logic) ─────────────────────
+  // ── Cart: prereserva session ──────────────────────────────
+  //
+  // The backend uses a SINGLE token to group all prereserved
+  // entries in one session.  The flow is:
+  //
+  //   1st call:  send token = ""
+  //              → backend creates UUID, returns it in ReservaResponse.token
+  //              → we store it in sessionStorage as prereserva_token
+  //
+  //   2nd+ call: send token = <stored UUID>
+  //              → backend validates the UUID exists and is not expired
+  //              → reuses same UUID, links this entry to same session
+  //
+  //   Cancel:    DELETE /entradas/{id}/prerreservar/{token}
+  //              → backend frees the entry
+  //              → we remove it from cartIds
+  //              → if cartIds becomes empty, we clear the token too
+  //
+  //   Purchase:  POST /entradas/comprar { tokenPrerreserva: <UUID>, tokenUsuario }
+  //              → backend finds all entries with that UUID and marks as VENDIDA
+  //
 
   /**
-   * Add an entrada to the cart:
-   * 1. Call POST /entradas/{id}/prerreservar with token (empty string if none yet)
-   * 2. Store the returned token in sessionStorage keyed by entradaId
-   * Returns an Observable so the caller can show loading/error state.
+   * Add an entrada to the cart.
+   * Sends the current session token (or empty string on first call).
+   * Stores the token returned by the backend for all future calls.
    */
-  addToCart(entradaId: number, userToken: string | null): Observable<ReservaResponse | null> {
-    const body = { token: userToken ?? '' };
+  addToCart(entradaId: number): Observable<ReservaResponse> {
+    // Always send the current prereserva session token.
+    // On first call it will be '', backend generates a UUID.
+    // On subsequent calls it will be that UUID, backend reuses it.
+    const currentToken = this._prereservaToken();
 
     return new Observable(observer => {
-      this.http.post<ReservaResponse>(`${API}/entradas/${entradaId}/prerreservar`, body)
-        .subscribe({
-          next: reserva => {
-            const map = new Map(this._prereservas());
-            map.set(entradaId, reserva.token);
-            this._prereservas.set(map);
-            savePrereservas(map);
-            observer.next(reserva);
-            observer.complete();
-          },
-          error: err => {
-            observer.error(err);
+      this.http.post<ReservaResponse>(
+        `${API}/entradas/${entradaId}/prerreservar`,
+        { token: currentToken }
+      ).subscribe({
+        next: reserva => {
+          // Store the token returned by the backend (same for all entries in session)
+          if (reserva.token && reserva.token !== currentToken) {
+            this._prereservaToken.set(reserva.token);
+            persistToken(reserva.token);
           }
-        });
+          // Add this entrada to the local cart set
+          const ids = new Set(this._cartIds());
+          ids.add(entradaId);
+          this._cartIds.set(ids);
+          persistIds(ids);
+
+          observer.next(reserva);
+          observer.complete();
+        },
+        error: err => observer.error(err)
+      });
     });
   }
 
   /**
-   * Remove an entrada from the cart:
-   * 1. Look up the token for this entradaId
-   * 2. Call DELETE /entradas/{id}/prerreservar/{token}
-   * 3. Remove from local store
+   * Remove an entrada from the cart.
+   * Calls DELETE /entradas/{id}/prerreservar/{token}.
+   * Clears the session token if cart becomes empty.
    */
   removeFromCart(entradaId: number): Observable<void> {
-    const token = this._prereservas().get(entradaId);
+    const token = this._prereservaToken();
 
     return new Observable(observer => {
-      if (!token) {
-        // Not in cart – nothing to do
+      if (!token || !this._cartIds().has(entradaId)) {
+        // Nothing to cancel on backend; just clean local state
+        this._removeLocalId(entradaId);
         observer.next();
         observer.complete();
         return;
@@ -224,51 +283,63 @@ export class EventService {
       this.http.delete<void>(`${API}/entradas/${entradaId}/prerreservar/${token}`)
         .subscribe({
           next: () => {
-            const map = new Map(this._prereservas());
-            map.delete(entradaId);
-            this._prereservas.set(map);
-            savePrereservas(map);
+            this._removeLocalId(entradaId);
             observer.next();
             observer.complete();
           },
           error: err => {
-            // Even on error, clean local state (token may already be expired)
-            const map = new Map(this._prereservas());
-            map.delete(entradaId);
-            this._prereservas.set(map);
-            savePrereservas(map);
+            // Clean local state even on error (token may be expired)
+            this._removeLocalId(entradaId);
             observer.error(err);
           }
         });
     });
   }
 
-  /** Get the prereserva token for a given entrada (null if not in cart) */
-  getTokenForEntrada(entradaId: number): string | null {
-    return this._prereservas().get(entradaId) ?? null;
+  private _removeLocalId(entradaId: number): void {
+    const ids = new Set(this._cartIds());
+    ids.delete(entradaId);
+    this._cartIds.set(ids);
+    persistIds(ids);
+
+    // If cart is now empty, reset the session token so next
+    // purchase gets a fresh UUID from the backend
+    if (ids.size === 0) {
+      this._prereservaToken.set('');
+      sessionStorage.removeItem(TOKEN_KEY);
+    }
   }
 
-  /** True if this entrada is currently prereserved */
+  /**
+   * Restore _cartIds from a confirmed list returned by the backend.
+   * Called on page load after GET /entradas/prerreserva/{token} succeeds.
+   * Does NOT touch the token — only syncs the ID set.
+   */
+  restoreCartIds(ids: number[]): void {
+    const set = new Set(ids);
+    this._cartIds.set(set);
+    persistIds(set);
+  }
+
+  /** Whether an entrada is currently in the prereserva cart */
   isInCart(entradaId: number): boolean {
-    return this._prereservas().has(entradaId);
+    return this._cartIds().has(entradaId);
   }
 
-  /** Clear ALL local prereservas (e.g. after successful purchase) */
+  /** The shared prereserva token to use at purchase time */
+  getPrereservaToken(): string {
+    return this._prereservaToken();
+  }
+
+  /** Clear cart completely (call after successful purchase) */
   clearCart(): void {
-    this._prereservas.set(new Map());
-    sessionStorage.removeItem(SESSION_KEY);
+    this._prereservaToken.set('');
+    this._cartIds.set(new Set());
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(IDS_KEY);
   }
 
   // ── Purchase ─────────────────────────────────────────────
-
-  prerreservar(entradaId: number, token: string | null): Observable<ReservaResponse> {
-    const body = { token: token ?? '' };
-    return this.http.post<ReservaResponse>(`${API}/entradas/${entradaId}/prerreservar`, body);
-  }
-
-  cancelarPrerreserva(entradaId: number, token: string): Observable<void> {
-    return this.http.delete<void>(`${API}/entradas/${entradaId}/prerreservar/${token}`);
-  }
 
   comprar(tokenPrerreserva: string, tokenUsuario: string): Observable<CompraResponse> {
     return this.http.post<CompraResponse>(`${API}/entradas/comprar`, {

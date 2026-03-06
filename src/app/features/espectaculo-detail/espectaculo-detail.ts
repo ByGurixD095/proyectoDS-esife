@@ -190,21 +190,69 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
       });
     }
 
+    // Step 1: load available (DISPONIBLE) entries for this show
     this.eventSvc.getEntradasByEspectaculo(id).subscribe({
-      next: data => {
-        this.entradas.set(data);
-        this.loading.set(false);
+      next: availableEntradas => {
+        // Step 2: if we have an active prereserva session token, fetch the
+        // RESERVADA entries that belong to it and merge them into the list.
+        // The backend only returns DISPONIBLE entries in the normal endpoint,
+        // so we need a separate call to recover the user's cart on page load.
+        const token = this.eventSvc.getPrereservaToken();
 
-        const hasZ = data.some(e => e.tipo === 'ZONA');
-        const hasP = data.some(e => e.tipo === 'PRECISA');
-        this.activeTab.set(hasZ ? 'zona' : 'precisa');
+        const finalize = (allEntradas: Entrada[]) => {
+          this.entradas.set(allEntradas);
+          this.loading.set(false);
 
-        if (hasP) {
-          const ps = Array.from(
-            new Set((data.filter(e => e.tipo === 'PRECISA') as EntradaPrecisa[]).map(e => e.planta))
-          ).sort((a, b) => a - b);
-          if (ps.length) this.selectedPlanta.set(ps[0]);
+          const hasZ = allEntradas.some(e => e.tipo === 'ZONA');
+          const hasP = allEntradas.some(e => e.tipo === 'PRECISA');
+          this.activeTab.set(hasZ ? 'zona' : 'precisa');
+
+          if (hasP) {
+            const ps = Array.from(
+              new Set((allEntradas.filter(e => e.tipo === 'PRECISA') as EntradaPrecisa[]).map(e => e.planta))
+            ).sort((a, b) => a - b);
+            if (ps.length) this.selectedPlanta.set(ps[0]);
+          }
+        };
+
+        if (!token) {
+          // No active session — just show available entries, cart is empty
+          finalize(availableEntradas);
+          return;
         }
+
+        // Fetch prereserved entries for our session token
+        this.eventSvc.getEntradasByToken(token).subscribe({
+          next: prereservedEntradas => {
+            if (prereservedEntradas.length === 0) {
+              // Token exists in sessionStorage but backend has no entries
+              // (expired or already purchased) — clear stale local state
+              this.eventSvc.clearCart();
+              finalize(availableEntradas);
+              return;
+            }
+
+            // Restore cart IDs from what the backend confirms is still RESERVADA
+            const prereservedIds = prereservedEntradas.map(e => e.id);
+            this.eventSvc.restoreCartIds(prereservedIds);
+
+            // Merge: available list + prereserved list (deduplicating by id)
+            // so the UI can show prereserved seats as "selected" alongside
+            // the free ones.
+            const availableIds = new Set(availableEntradas.map(e => e.id));
+            const merged = [
+              ...availableEntradas,
+              ...prereservedEntradas.filter(e => !availableIds.has(e.id))
+            ];
+
+            finalize(merged);
+          },
+          error: () => {
+            // Failed to reach backend — fall back to just available entries
+            // and keep local cart state as-is (optimistic)
+            finalize(availableEntradas);
+          }
+        });
       },
       error: () => { this.error.set('No se pudieron cargar las entradas.'); this.loading.set(false); }
     });
@@ -254,7 +302,7 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
     this._setPending(entradaId, true);
     this._setError(entradaId, false);
 
-    this.eventSvc.addToCart(entradaId, this.authSvc.getToken()).subscribe({
+    this.eventSvc.addToCart(entradaId).subscribe({
       next:  () => this._setPending(entradaId, false),
       error: () => {
         this._setPending(entradaId, false);
@@ -295,11 +343,17 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
 
   processPurchase(): void {
     this.purchaseStep.set('processing');
-    const firstId = this.cartEntradas()[0]?.id;
-    if (!firstId) return;
 
-    const prereservaToken = this.eventSvc.getTokenForEntrada(firstId)!;
-    const userToken       = this.authSvc.getToken() ?? '';
+    // The shared prereserva token groups ALL entries in the cart.
+    // The backend looks up all entries with this token and marks them VENDIDA.
+    const prereservaToken = this.eventSvc.getPrereservaToken();
+    if (!prereservaToken) {
+      this.purchaseStep.set('error');
+      this.purchaseMsg.set('No hay una sesión de prerreserva activa. Añade entradas al carrito primero.');
+      return;
+    }
+
+    const userToken = this.authSvc.getToken() ?? '';
 
     this.eventSvc.comprar(prereservaToken, userToken).subscribe({
       next: result => {
