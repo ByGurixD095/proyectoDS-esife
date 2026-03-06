@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, computed, OnInit, OnDestroy
+  Component, inject, signal, computed, OnInit
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -30,7 +30,7 @@ export interface SeatCell {
   templateUrl: './espectaculo-detail.html',
   styleUrls: ['./espectaculo-detail.css']
 })
-export class EspectaculoDetailComponent implements OnInit, OnDestroy {
+export class EspectaculoDetailComponent implements OnInit {
   private route      = inject(ActivatedRoute);
   private router     = inject(Router);
   protected eventSvc = inject(EventService);
@@ -43,7 +43,10 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
   loading     = signal(true);
   error       = signal<string | null>(null);
 
-  // ── Per-seat loading/error state ─────────────────────────
+  // ── Espectaculo ID (needed for API calls) ─────────────────
+  private espectaculoId = 0;
+
+  // ── Per-seat loading/error state ──────────────────────────
   pendingIds = signal<Set<number>>(new Set());
   errorIds   = signal<Set<number>>(new Set());
 
@@ -56,7 +59,7 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
   purchaseStep = signal<'idle' | 'confirming' | 'processing' | 'done' | 'error'>('idle');
   purchaseMsg  = signal('');
 
-  // ── Accent color (same deterministic hash as ticket card) ─
+  // ── Accent color ──────────────────────────────────────────
   accentColor = computed((): string => {
     const esp = this.espectaculo();
     if (!esp) return '#8b5cf6';
@@ -96,19 +99,17 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
       }));
   });
 
-  // Entradas within the currently selected zona
   zonaEntradas = computed((): EntradaDeZona[] => {
     const z = this.selectedZona();
     if (z === null) return [];
     return this.entradasZona().filter(e => e.zona === z);
   });
 
-  // How many of the selected zona are prereserved right now
   zonaSelectedCount = computed((): number =>
     this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id)).length
   );
 
-  // ── Plantas for precisa ───────────────────────────────────
+  // ── Plantas ───────────────────────────────────────────────
   plantas = computed((): number[] => {
     const set = new Set(this.entradasPrecisas().map(e => e.planta));
     return Array.from(set).sort((a, b) => a - b);
@@ -137,9 +138,9 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
         const e = posMap.get(`${f}-${c}`) ?? null;
         let state: SeatState = 'taken';
         if (e) {
-          if (pending.has(e.id))                  state = 'loading';
-          else if (this.eventSvc.isInCart(e.id))  state = 'selected';
-          else                                     state = 'free';
+          if (pending.has(e.id))                 state = 'loading';
+          else if (this.eventSvc.isInCart(e.id)) state = 'selected';
+          else                                    state = 'free';
         }
         row.push({ entrada: e, state });
       }
@@ -148,7 +149,7 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
     return grid;
   });
 
-  // ── Cart (all prereserved entradas for this espectaculo) ──
+  // ── Cart ──────────────────────────────────────────────────
   cartEntradas = computed((): Entrada[] =>
     this.entradas().filter(e => this.eventSvc.isInCart(e.id))
   );
@@ -165,8 +166,7 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
     });
   });
 
-  horaLabel = computed(() => this.espectaculo()?.fecha.substring(11, 16) ?? '');
-
+  horaLabel    = computed(() => this.espectaculo()?.fecha.substring(11, 16) ?? '');
   ocupacionPct = computed((): number => {
     const i = this.info();
     if (!i || i.total === 0) return 0;
@@ -178,83 +178,28 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/']); return; }
 
-    // Use cached espectaculo if available (navigated from home)
+    this.espectaculoId = id;
+
     const cached = this.eventSvc.espectaculos().find(e => e.id === id);
     if (cached) {
       this.espectaculo.set(cached);
     } else {
-      // Fallback: fetch via ?id= query param (no path-variable endpoint exists)
       this.eventSvc.getEspectaculoById(id).subscribe({
         next: data => this.espectaculo.set(data),
-        error: () => {} // hero stays empty, not critical
+        error: () => {}
       });
     }
 
-    // Step 1: load available (DISPONIBLE) entries for this show
     this.eventSvc.getEntradasByEspectaculo(id).subscribe({
       next: availableEntradas => {
-        // Step 2: if we have an active prereserva session token, fetch the
-        // RESERVADA entries that belong to it and merge them into the list.
-        // The backend only returns DISPONIBLE entries in the normal endpoint,
-        // so we need a separate call to recover the user's cart on page load.
-        const token = this.eventSvc.getPrereservaToken();
-
-        const finalize = (allEntradas: Entrada[]) => {
-          this.entradas.set(allEntradas);
-          this.loading.set(false);
-
-          const hasZ = allEntradas.some(e => e.tipo === 'ZONA');
-          const hasP = allEntradas.some(e => e.tipo === 'PRECISA');
-          this.activeTab.set(hasZ ? 'zona' : 'precisa');
-
-          if (hasP) {
-            const ps = Array.from(
-              new Set((allEntradas.filter(e => e.tipo === 'PRECISA') as EntradaPrecisa[]).map(e => e.planta))
-            ).sort((a, b) => a - b);
-            if (ps.length) this.selectedPlanta.set(ps[0]);
-          }
-        };
-
-        if (!token) {
-          // No active session — just show available entries, cart is empty
-          finalize(availableEntradas);
-          return;
-        }
-
-        // Fetch prereserved entries for our session token
-        this.eventSvc.getEntradasByToken(token).subscribe({
-          next: prereservedEntradas => {
-            if (prereservedEntradas.length === 0) {
-              // Token exists in sessionStorage but backend has no entries
-              // (expired or already purchased) — clear stale local state
-              this.eventSvc.clearCart();
-              finalize(availableEntradas);
-              return;
-            }
-
-            // Restore cart IDs from what the backend confirms is still RESERVADA
-            const prereservedIds = prereservedEntradas.map(e => e.id);
-            this.eventSvc.restoreCartIds(prereservedIds);
-
-            // Merge: available list + prereserved list (deduplicating by id)
-            // so the UI can show prereserved seats as "selected" alongside
-            // the free ones.
-            const availableIds = new Set(availableEntradas.map(e => e.id));
-            const merged = [
-              ...availableEntradas,
-              ...prereservedEntradas.filter(e => !availableIds.has(e.id))
-            ];
-
-            finalize(merged);
-          },
-          error: () => {
-            // Failed to reach backend — fall back to just available entries
-            // and keep local cart state as-is (optimistic)
-            finalize(availableEntradas);
-          }
-        });
+        this.entradas.set(availableEntradas);
+        this.loading.set(false);
+        this._initTabAndPlanta(availableEntradas);
       },
-      error: () => { this.error.set('No se pudieron cargar las entradas.'); this.loading.set(false); }
+      error: () => {
+        this.error.set('No se pudieron cargar las entradas.');
+        this.loading.set(false);
+      }
     });
 
     this.eventSvc.getEntradaInfo(id).subscribe({
@@ -263,24 +208,32 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy(): void {}
+  private _initTabAndPlanta(entradas: Entrada[]): void {
+    const hasZ = entradas.some(e => e.tipo === 'ZONA');
+    const hasP = entradas.some(e => e.tipo === 'PRECISA');
+    this.activeTab.set(hasZ ? 'zona' : 'precisa');
+
+    if (hasP) {
+      const plantas = Array.from(
+        new Set((entradas.filter(e => e.tipo === 'PRECISA') as EntradaPrecisa[]).map(e => e.planta))
+      ).sort((a, b) => a - b);
+      if (plantas.length) this.selectedPlanta.set(plantas[0]);
+    }
+  }
 
   // ── Navigation ────────────────────────────────────────────
   goBack(): void { this.router.navigate(['/']); }
-  selectZona(zona: number): void   { this.selectedZona.set(zona); }
+  selectZona(zona: number): void     { this.selectedZona.set(zona); }
   selectPlanta(planta: number): void { this.selectedPlanta.set(planta); }
 
-  // ── Zona +/- ─────────────────────────────────────────────
-
+  // ── Zona +/- ──────────────────────────────────────────────
   addOneFromZona(): void {
-    // Pick next not-yet-prereserved entrada in this zona
     const next = this.zonaEntradas().find(e => !this.eventSvc.isInCart(e.id));
     if (!next) return;
     this._prereservar(next.id);
   }
 
   removeOneFromZona(): void {
-    // Cancel the last prereserved entrada in this zona
     const prereserved = this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id));
     const last = prereserved[prereserved.length - 1];
     if (!last) return;
@@ -288,7 +241,6 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
   }
 
   // ── Seat toggle ───────────────────────────────────────────
-
   toggleSeat(cell: SeatCell): void {
     if (!cell.entrada || cell.state === 'loading' || cell.state === 'taken') return;
     cell.state === 'selected'
@@ -296,13 +248,12 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
       : this._prereservar(cell.entrada.id);
   }
 
-  // ── Internal: call API immediately ───────────────────────
-
+  // ── API calls ─────────────────────────────────────────────
   private _prereservar(entradaId: number): void {
     this._setPending(entradaId, true);
     this._setError(entradaId, false);
 
-    this.eventSvc.addToCart(entradaId).subscribe({
+    this.eventSvc.addToCart(this.espectaculoId, entradaId).subscribe({
       next:  () => this._setPending(entradaId, false),
       error: () => {
         this._setPending(entradaId, false);
@@ -314,12 +265,22 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
 
   private _cancelar(entradaId: number): void {
     this._setPending(entradaId, true);
-    this.eventSvc.removeFromCart(entradaId).subscribe({
+    this.eventSvc.removeFromCart(this.espectaculoId, entradaId).subscribe({
       next:  () => this._setPending(entradaId, false),
       error: () => this._setPending(entradaId, false)
     });
   }
 
+  // ── Template helpers ──────────────────────────────────────
+  cancelarEntrada(entradaId: number): void { this._cancelar(entradaId); }
+  isInCart(id: number): boolean  { return this.eventSvc.isInCart(id); }
+  isPending(id: number): boolean { return this.pendingIds().has(id); }
+  hasError(id: number): boolean  { return this.errorIds().has(id); }
+
+  trackByIndex(i: number): number { return i; }
+  trackById(_: number, cell: SeatCell): number { return cell.entrada?.id ?? _; }
+
+  // ── Pending/error state ───────────────────────────────────
   private _setPending(id: number, on: boolean): void {
     const s = new Set(this.pendingIds());
     on ? s.add(id) : s.delete(id);
@@ -333,7 +294,6 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
   }
 
   // ── Purchase flow ─────────────────────────────────────────
-
   confirmPurchase(): void {
     if (!this.selectionCount()) return;
     this.purchaseStep.set('confirming');
@@ -344,12 +304,10 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
   processPurchase(): void {
     this.purchaseStep.set('processing');
 
-    // The shared prereserva token groups ALL entries in the cart.
-    // The backend looks up all entries with this token and marks them VENDIDA.
     const prereservaToken = this.eventSvc.getPrereservaToken();
     if (!prereservaToken) {
       this.purchaseStep.set('error');
-      this.purchaseMsg.set('No hay una sesión de prerreserva activa. Añade entradas al carrito primero.');
+      this.purchaseMsg.set('No hay una sesión de prerreserva activa.');
       return;
     }
 
@@ -367,15 +325,4 @@ export class EspectaculoDetailComponent implements OnInit, OnDestroy {
       }
     });
   }
-
-  // ── Template helpers ──────────────────────────────────────
-  isInCart(id: number): boolean  { return this.eventSvc.isInCart(id); }
-  isPending(id: number): boolean { return this.pendingIds().has(id); }
-  hasError(id: number): boolean  { return this.errorIds().has(id); }
-
-  /** Public alias so template can call it directly from the order list */
-  _cancelar_public(entradaId: number): void { this._cancelar(entradaId); }
-
-  trackByIndex(i: number): number { return i; }
-  trackById(_: number, cell: SeatCell): number { return cell.entrada?.id ?? _; }
 }

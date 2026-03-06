@@ -8,7 +8,6 @@
   </button>
 </div>
 
-<!-- ── Loading ───────────────────────────────────────────────── -->
 @if (loading()) {
   <div class="detail-loading">
     <div class="detail-loading__spinner"></div>
@@ -16,7 +15,6 @@
   </div>
 }
 
-<!-- ── Error ─────────────────────────────────────────────────── -->
 @if (error() && !loading()) {
   <div class="detail-error">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -30,7 +28,6 @@
 
 @if (!loading() && !error() && espectaculo()) {
 
-  <!-- ── Hero strip ─────────────────────────────────────────── -->
   <header class="detail-hero" [style.--accent]="accentColor()">
     <div class="detail-hero__glow"></div>
     <div class="detail-hero__content">
@@ -95,22 +92,16 @@
     </div>
   </header>
 
-  <!-- ── Main layout ──────────────────────────────────────── -->
   <div class="detail-layout">
-
-    <!-- ── Left: picker ─────────────────────────────────── -->
     <section class="detail-picker">
 
-      <!-- Tab switcher (only if both types exist) -->
       @if (hasZona() && hasPrecisa()) {
         <div class="picker-tabs">
           <button class="picker-tab" [class.picker-tab--active]="activeTab() === 'zona'"
                   (click)="activeTab.set('zona')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="8" height="8" rx="1"/>
-              <rect x="13" y="3" width="8" height="8" rx="1"/>
-              <rect x="3" y="13" width="8" height="8" rx="1"/>
-              <rect x="13" y="13" width="8" height="8" rx="1"/>
+              <rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/>
+              <rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>
             </svg>
             Por zona
           </button>
@@ -125,23 +116,19 @@
         </div>
       }
 
-      <!-- ══ ZONA picker ════════════════════════════════════ -->
       @if ((activeTab() === 'zona' || !hasPrecisa()) && hasZona()) {
         <div class="zone-picker">
           <p class="picker-hint">Selecciona una zona para ver las entradas disponibles</p>
-
           <div class="zone-map" [style.--accent]="accentColor()">
             <div class="zone-map__stage">ESCENARIO</div>
             <div class="zone-map__grid">
               @for (group of zonaGroups(); track group.zona) {
-                <button
-                  class="zone-block"
+                <button class="zone-block"
                   [class.zone-block--selected]="selectedZona() === group.zona"
                   [class.zone-block--soldout]="group.entradas.length === 0"
                   [style.--zone-idx]="group.zona"
                   (click)="selectZona(group.zona)"
-                  [disabled]="group.entradas.length === 0"
-                >
+                  [disabled]="group.entradas.length === 0">
                   <span class="zone-block__label">Zona {{ group.zona }}</span>
                   <span class="zone-block__seats">{{ group.entradas.length }} libres</span>
                   <span class="zone-block__price">
@@ -156,7 +143,6 @@
             </div>
           </div>
 
-          <!-- Zona detail: quantity stepper with immediate API calls -->
           @if (selectedZona() !== null) {
             <div class="zone-detail" [style.--accent]="accentColor()">
               <div class="zone-detail__header">
@@ -165,24 +151,18 @@
                   {{ zonaEntradas().length - zonaSelectedCount() }} disponibles
                 </span>
               </div>
-
               @for (group of zonaGroups(); track group.zona) {
                 @if (group.zona === selectedZona()) {
-                  <span class="zone-detail__price">
-                    desde {{ group.precioMin | number:'1.2-2' }}€
-                  </span>
+                  <span class="zone-detail__price">desde {{ group.precioMin | number:'1.2-2' }}€</span>
                 }
               }
-
               <div class="zone-detail__qty">
-                <!-- Minus: calls DELETE /entradas/{id}/prerreservar/{token} -->
                 <button class="qty-btn" (click)="removeOneFromZona()"
                         [disabled]="zonaSelectedCount() === 0 || pendingIds().size > 0">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
                 </button>
-
                 <div class="qty-center">
                   @if (pendingIds().size > 0) {
                     <div class="qty-spinner"></div>
@@ -190,8 +170,6 @@
                     <span class="qty-value">{{ zonaSelectedCount() }}</span>
                   }
                 </div>
-
-                <!-- Plus: calls POST /entradas/{id}/prerreservar -->
                 <button class="qty-btn" (click)="addOneFromZona()"
                         [disabled]="zonaSelectedCount() >= zonaEntradas().length || pendingIds().size > 0">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -199,19 +177,14 @@
                   </svg>
                 </button>
               </div>
-
-              <p class="zone-detail__hint">
-                Cada entrada se reserva automáticamente durante 10 minutos
-              </p>
+              <p class="zone-detail__hint">Cada entrada se reserva automáticamente durante 10 minutos</p>
             </div>
           }
         </div>
       }
 
-      <!-- ══ PRECISA picker ════════════════════════════════ -->
       @if ((activeTab() === 'precisa' || !hasZona()) && hasPrecisa()) {
         <div class="seat-picker">
-
           @if (plantas().length > 1) {
             <div class="planta-tabs">
               @for (p of plantas(); track p) {
@@ -223,29 +196,19 @@
               }
             </div>
           }
-
           <div class="seat-screen">ESCENARIO / PANTALLA</div>
-
           <div class="seat-legend">
-            <span class="seat-legend__item">
-              <span class="seat-dot seat-dot--free"></span> Libre
-            </span>
-            <span class="seat-legend__item">
-              <span class="seat-dot seat-dot--selected"></span> Reservado
-            </span>
-            <span class="seat-legend__item">
-              <span class="seat-dot seat-dot--taken"></span> Ocupado
-            </span>
+            <span class="seat-legend__item"><span class="seat-dot seat-dot--free"></span> Libre</span>
+            <span class="seat-legend__item"><span class="seat-dot seat-dot--selected"></span> Reservado</span>
+            <span class="seat-legend__item"><span class="seat-dot seat-dot--taken"></span> Ocupado</span>
           </div>
-
           <div class="seat-grid-wrap">
             <div class="seat-grid">
               @for (row of seatGrid(); track trackByIndex($index)) {
                 <div class="seat-row">
                   <span class="seat-row__label">{{ $index + 1 }}</span>
                   @for (cell of row; track trackById($index, cell)) {
-                    <button
-                      class="seat"
+                    <button class="seat"
                       [class.seat--free]="cell.state === 'free'"
                       [class.seat--selected]="cell.state === 'selected'"
                       [class.seat--taken]="cell.state === 'taken' || !cell.entrada"
@@ -256,12 +219,10 @@
                       [attr.title]="cell.entrada
                         ? 'Fila ' + cell.entrada.fila + ' · Col ' + cell.entrada.columna + ' · ' + (cell.entrada.precio | number:'1.2-2') + '€'
                         : null"
-                      (click)="toggleSeat(cell)"
-                    >
+                      (click)="toggleSeat(cell)">
                       @if (cell.state === 'loading') {
                         <span class="seat__spinner"></span>
                       } @else {
-                        <!-- Seat icon -->
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/>
                           <path d="M2 14h20v6H2z"/>
@@ -274,7 +235,6 @@
               }
             </div>
           </div>
-
           @if (selectionCount() === 0) {
             <p class="seat-hint">Haz click en una butaca libre para prereservarla</p>
           }
@@ -292,7 +252,6 @@
 
     </section>
 
-    <!-- ── Right: order summary ──────────────────────────── -->
     <aside class="detail-sidebar">
       <div class="order-card" [style.--accent]="accentColor()">
         <h2 class="order-card__title">Tu selección</h2>
@@ -319,10 +278,9 @@
                 </span>
                 <div class="order-line__right">
                   <span class="order-line__price">{{ e.precio | number:'1.2-2' }}€</span>
-                  <!-- Quick-remove button -->
                   <button class="order-line__remove"
                           [disabled]="isPending(e.id)"
-                          (click)="_cancelar_public(e.id)"
+                          (click)="cancelarEntrada(e.id)"
                           title="Eliminar">
                     @if (isPending(e.id)) {
                       <span class="mini-spinner"></span>
