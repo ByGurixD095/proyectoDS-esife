@@ -1,7 +1,8 @@
 import {
-  Component, input, inject, OnInit, signal, computed
+  Component, input, inject, OnInit, signal, computed, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Espectaculo, EntradaInfo } from '../../../models/event.model';
 import { EventService } from '../../../services/event.service';
 
@@ -12,24 +13,27 @@ import { EventService } from '../../../services/event.service';
   templateUrl: './event-ticket.html',
   styleUrls: ['./event-ticket.css']
 })
-
 export class EventTicketComponent implements OnInit {
   espectaculo = input.required<Espectaculo>();
 
   private eventService = inject(EventService);
+  private router       = inject(Router);
 
   info      = signal<EntradaInfo | null>(null);
   infoError = signal(false);
 
+  @HostListener('click')
+  navigate(): void {
+    this.router.navigate(['/espectaculos', this.espectaculo().id]);
+  }
+
   // ── Computed helpers ──────────────────────────────────────
 
-  /** "21:00" from "2026-03-14T21:00:00" */
   hora = computed(() => {
     const t = this.espectaculo().fecha;
     return t ? t.substring(11, 16) : '';
   });
 
-  /** "14 MAR 2026" */
   fechaLabel = computed(() => {
     const d = new Date(this.espectaculo().fecha);
     return d.toLocaleDateString('es-ES', {
@@ -37,7 +41,6 @@ export class EventTicketComponent implements OnInit {
     }).toUpperCase();
   });
 
-  /** Initials from artist name, max 3 chars */
   initials = computed(() => {
     return this.espectaculo().artista
       .split(/\s+/)
@@ -47,7 +50,6 @@ export class EventTicketComponent implements OnInit {
       .join('');
   });
 
-  /** Deterministic color from artist name — no genre field in backend */
   accentColor = computed((): string => {
     const palette = [
       '#e07b39', '#6c5ce7', '#00b894', '#e84393',
@@ -81,9 +83,9 @@ export class EventTicketComponent implements OnInit {
   });
 
   ngOnInit(): void {
-  //this.eventService.getEntradaInfo(this.espectaculo().id).subscribe({
-  //    next: data => this.info.set(data),
-  //    error: () => this.infoError.set(true)
-  //  });
+    this.eventService.getEntradaInfo(this.espectaculo().id).subscribe({
+      next:  data => this.info.set(data),
+      error: ()   => this.infoError.set(true)
+    });
   }
 }
