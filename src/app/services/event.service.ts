@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, of } from 'rxjs';
+import { Observable, forkJoin, tap, catchError, of } from 'rxjs';
 import {
   Espectaculo, Escenario, Entrada, EntradaInfo,
   ReservaResponse, CompraResponse, ColaResponse,
@@ -130,6 +130,10 @@ export class EventService {
   }
 
   // ── Entradas ─────────────────────────────────────────────
+
+  getEntradaById(espectaculoId: number, entradaId: number): Observable<Entrada> {
+    return this.http.get<Entrada>(`${API}/espectaculos/${espectaculoId}/entradas/${entradaId}`);
+  }
 
   getEntradasByEspectaculo(espectaculoId: number): Observable<Entrada[]> {
     return this.http.get<Entrada[]>(`${API}/espectaculos/${espectaculoId}/entradas`);

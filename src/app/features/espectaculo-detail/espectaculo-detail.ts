@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { EventService } from '../../services/event.service';
 import { AuthService }  from '../../services/auth.service';
+import { forkJoin } from 'rxjs';
 import {
   Espectaculo, Entrada, EntradaDeZona, EntradaPrecisa, EntradaInfo
 } from '../../models/event.model';
@@ -14,6 +15,15 @@ export interface ZonaGroup {
   entradas: EntradaDeZona[];
   precioMin: number;
   precioMax: number;
+}
+
+export interface PriceGroup {
+  label: string;         // "438€ – 470€"
+  rangeMin: number;
+  rangeMax: number;
+  disponibles: number;
+  total: number;
+  entradas: EntradaDeZona[];
 }
 
 export type SeatState = 'free' | 'selected' | 'taken' | 'loading';
@@ -43,7 +53,7 @@ export class EspectaculoDetailComponent implements OnInit {
   loading     = signal(true);
   error       = signal<string | null>(null);
 
-  // ── Espectaculo ID (needed for API calls) ─────────────────
+  // ── Espectaculo ID ────────────────────────────────────────
   private espectaculoId = 0;
 
   // ── Per-seat loading/error state ──────────────────────────
@@ -51,9 +61,10 @@ export class EspectaculoDetailComponent implements OnInit {
   errorIds   = signal<Set<number>>(new Set());
 
   // ── Zona / planta UI state ────────────────────────────────
-  selectedZona   = signal<number | null>(null);
-  selectedPlanta = signal<number | null>(null);
-  activeTab      = signal<'zona' | 'precisa'>('zona');
+  selectedZona        = signal<number | null>(null);
+  selectedPriceGroup  = signal<number | null>(null);  // índice en zonaPriceGroups()
+  selectedPlanta      = signal<number | null>(null);
+  activeTab           = signal<'zona' | 'precisa'>('zona');
 
   // ── Purchase flow ─────────────────────────────────────────
   purchaseStep = signal<'idle' | 'confirming' | 'processing' | 'done' | 'error'>('idle');
@@ -99,15 +110,80 @@ export class EspectaculoDetailComponent implements OnInit {
       }));
   });
 
+  // Entradas de la zona actualmente seleccionada
   zonaEntradas = computed((): EntradaDeZona[] => {
     const z = this.selectedZona();
     if (z === null) return [];
     return this.entradasZona().filter(e => e.zona === z);
   });
 
+  // Cuántas entradas de esta zona están en el carrito (cualquier precio)
   zonaSelectedCount = computed((): number =>
     this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id)).length
   );
+
+  // ── Price groups: 4 tramos iguales (min→max dividido en 4) ──
+  zonaPriceGroups = computed((): PriceGroup[] => {
+    const entradas = this.zonaEntradas();
+    if (!entradas.length) return [];
+
+    const precios = entradas.map(e => e.precio);
+    const min = Math.min(...precios);
+    const max = Math.max(...precios);
+
+    // Si todos tienen el mismo precio → un solo chip
+    if (min === max) {
+      return [{
+        label: `${min.toFixed(2)}€`,
+        rangeMin: min,
+        rangeMax: max,
+        disponibles: entradas.filter(e => !this.eventSvc.isInCart(e.id)).length,
+        total: entradas.length,
+        entradas,
+      }];
+    }
+
+    const N = 4;
+    const step = (max - min) / N;
+
+    return Array.from({ length: N }, (_, i) => {
+      const rMin = min + i * step;
+      const rMax = i === N - 1 ? max + 0.001 : min + (i + 1) * step;
+      const bucket = entradas.filter(e => e.precio >= rMin && e.precio < rMax);
+      return {
+        label: `${Math.ceil(rMin)}€ – ${Math.floor(rMax - 0.001)}€`,
+        rangeMin: rMin,
+        rangeMax: rMax,
+        disponibles: bucket.filter(e => !this.eventSvc.isInCart(e.id)).length,
+        total: bucket.length,
+        entradas: bucket,
+      };
+    }).filter(g => g.total > 0);  // oculta tramos vacíos
+  });
+
+  // Entradas del grupo de precio seleccionado
+  private zonaEntradasDelPrecio = computed((): EntradaDeZona[] => {
+    const idx = this.selectedPriceGroup();
+    if (idx === null) return [];
+    return this.zonaPriceGroups()[idx]?.entradas ?? [];
+  });
+
+  // Cuántas del grupo seleccionado están ya en el carrito
+  zonaSelectedCountForPrecio = computed((): number =>
+    this.zonaEntradasDelPrecio().filter(e => this.eventSvc.isInCart(e.id)).length
+  );
+
+  // Máximo que se puede añadir con el grupo seleccionado
+  zonaPrecioMax = computed((): number =>
+    this.zonaEntradasDelPrecio().length
+  );
+
+  // Label del grupo activo para mostrar en el stepper
+  selectedPriceLabel = computed((): string => {
+    const idx = this.selectedPriceGroup();
+    if (idx === null) return '';
+    return this.zonaPriceGroups()[idx]?.label ?? '';
+  });
 
   // ── Plantas ───────────────────────────────────────────────
   plantas = computed((): number[] => {
@@ -191,10 +267,43 @@ export class EspectaculoDetailComponent implements OnInit {
     }
 
     this.eventSvc.getEntradasByEspectaculo(id).subscribe({
-      next: availableEntradas => {
-        this.entradas.set(availableEntradas);
-        this.loading.set(false);
-        this._initTabAndPlanta(availableEntradas);
+      next: libres => {
+        const libresIds = new Set(libres.map(e => e.id));
+
+        // IDs en carrito que no están entre las libres → están prereservadas
+        const prereservadasIds = Array.from(this.eventSvc.cartIds())
+          .filter(cartId => !libresIds.has(cartId));
+
+        if (!prereservadasIds.length) {
+          this.entradas.set(libres);
+          this.loading.set(false);
+          this._initTabAndPlanta(libres);
+          return;
+        }
+
+        // Recuperar las entradas prereservadas en paralelo
+        const requests = prereservadasIds.map(eid =>
+          this.eventSvc.getEntradaById(id, eid)
+        );
+
+        forkJoin(requests).subscribe({
+          next: prereservadas => {
+            // Filtra las que realmente son de este espectáculo
+            const deEsteEspectaculo = prereservadas.filter(
+              e => e.espectaculoId === id
+            );
+            const todas = [...libres, ...deEsteEspectaculo];
+            this.entradas.set(todas);
+            this.loading.set(false);
+            this._initTabAndPlanta(todas);
+          },
+          error: () => {
+            // Si falla la recuperación, al menos muestra las libres
+            this.entradas.set(libres);
+            this.loading.set(false);
+            this._initTabAndPlanta(libres);
+          }
+        });
       },
       error: () => {
         this.error.set('No se pudieron cargar las entradas.');
@@ -223,18 +332,33 @@ export class EspectaculoDetailComponent implements OnInit {
 
   // ── Navigation ────────────────────────────────────────────
   goBack(): void { this.router.navigate(['/']); }
+
+  // Al cambiar de zona se resetea el precio seleccionado
+  selectZonaAndReset(zona: number): void {
+    this.selectedZona.set(zona);
+    this.selectedPriceGroup.set(null);
+  }
+
   selectZona(zona: number): void     { this.selectedZona.set(zona); }
   selectPlanta(planta: number): void { this.selectedPlanta.set(planta); }
 
-  // ── Zona +/- ──────────────────────────────────────────────
+  selectPrecio(idx: number): void {
+    this.selectedPriceGroup.set(idx);
+  }
+
   addOneFromZona(): void {
-    const next = this.zonaEntradas().find(e => !this.eventSvc.isInCart(e.id));
+    const pool = this.selectedPriceGroup() !== null
+      ? this.zonaEntradasDelPrecio().filter(e => !this.eventSvc.isInCart(e.id))
+      : this.zonaEntradas().filter(e => !this.eventSvc.isInCart(e.id));
+    const next = pool[0];
     if (!next) return;
     this._prereservar(next.id);
   }
 
   removeOneFromZona(): void {
-    const prereserved = this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id));
+    const prereserved = this.selectedPriceGroup() !== null
+      ? this.zonaEntradasDelPrecio().filter(e => this.eventSvc.isInCart(e.id))
+      : this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id));
     const last = prereserved[prereserved.length - 1];
     if (!last) return;
     this._cancelar(last.id);

@@ -116,33 +116,41 @@
         </div>
       }
 
+      <!-- ══ ZONAS ══ -->
       @if ((activeTab() === 'zona' || !hasPrecisa()) && hasZona()) {
         <div class="zone-picker">
-          <p class="picker-hint">Selecciona una zona para ver las entradas disponibles</p>
+          <p class="picker-hint">Selecciona una zona para ver los precios disponibles</p>
+
+          <!-- Mapa escalonado de zonas -->
           <div class="zone-map" [style.--accent]="accentColor()">
-            <div class="zone-map__stage">ESCENARIO</div>
-            <div class="zone-map__grid">
-              @for (group of zonaGroups(); track group.zona) {
-                <button class="zone-block"
+            <div class="zone-map__stage">▶ ESCENARIO ◀</div>
+
+            @for (group of zonaGroups(); track group.zona) {
+              <div class="zone-row" [class]="'zone-row--' + group.zona">
+                <button
+                  class="zone-block"
+                  [class]="'zone-block--z' + group.zona"
                   [class.zone-block--selected]="selectedZona() === group.zona"
                   [class.zone-block--soldout]="group.entradas.length === 0"
-                  [style.--zone-idx]="group.zona"
-                  (click)="selectZona(group.zona)"
+                  [style.--accent]="accentColor()"
+                  (click)="selectZonaAndReset(group.zona)"
                   [disabled]="group.entradas.length === 0">
-                  <span class="zone-block__label">Zona {{ group.zona }}</span>
-                  <span class="zone-block__seats">{{ group.entradas.length }} libres</span>
-                  <span class="zone-block__price">
-                    @if (group.precioMin === group.precioMax) {
+                  <div class="zone-block__left">
+                    <span class="zone-block__label">Zona {{ group.zona }}</span>
+                    <span class="zone-block__seats">{{ group.entradas.length }} entradas libres</span>
+                  </div>
+                  <div class="zone-block__price">
+                    <span class="zone-block__price-from">desde</span>
+                    <span class="zone-block__price-val">
                       {{ group.precioMin | number:'1.2-2' }}€
-                    } @else {
-                      {{ group.precioMin | number:'1.2-2' }} – {{ group.precioMax | number:'1.2-2' }}€
-                    }
-                  </span>
+                    </span>
+                  </div>
                 </button>
-              }
-            </div>
+              </div>
+            }
           </div>
 
+          <!-- Chips de precio por zona seleccionada -->
           @if (selectedZona() !== null) {
             <div class="zone-detail" [style.--accent]="accentColor()">
               <div class="zone-detail__header">
@@ -151,38 +159,66 @@
                   {{ zonaEntradas().length - zonaSelectedCount() }} disponibles
                 </span>
               </div>
-              @for (group of zonaGroups(); track group.zona) {
-                @if (group.zona === selectedZona()) {
-                  <span class="zone-detail__price">desde {{ group.precioMin | number:'1.2-2' }}€</span>
+
+              <!-- Chips agrupados por rango de precio (máx 4) -->
+              <div class="zone-price-chips">
+                @for (priceGroup of zonaPriceGroups(); track priceGroup.label; let idx = $index) {
+                  <button
+                    class="price-chip"
+                    [class.price-chip--active]="selectedPriceGroup() === idx"
+                    [style.--accent]="accentColor()"
+                    (click)="selectPrecio(idx)"
+                    [disabled]="priceGroup.disponibles === 0">
+                    <span class="price-chip__label">{{ priceGroup.label }}</span>
+                    <span class="price-chip__count">{{ priceGroup.disponibles }} libres</span>
+                  </button>
                 }
-              }
-              <div class="zone-detail__qty">
-                <button class="qty-btn" (click)="removeOneFromZona()"
-                        [disabled]="zonaSelectedCount() === 0 || pendingIds().size > 0">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                </button>
-                <div class="qty-center">
-                  @if (pendingIds().size > 0) {
-                    <div class="qty-spinner"></div>
-                  } @else {
-                    <span class="qty-value">{{ zonaSelectedCount() }}</span>
-                  }
-                </div>
-                <button class="qty-btn" (click)="addOneFromZona()"
-                        [disabled]="zonaSelectedCount() >= zonaEntradas().length || pendingIds().size > 0">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                </button>
               </div>
-              <p class="zone-detail__hint">Cada entrada se reserva automáticamente durante 10 minutos</p>
+
+              <!-- Stepper — solo visible cuando hay un grupo seleccionado -->
+              @if (selectedPriceGroup() !== null) {
+                <div class="zone-detail__qty">
+                  <div class="zone-detail__qty-info">
+                    <span class="zone-detail__qty-label">
+                      {{ zonaSelectedCountForPrecio() }} entrada{{ zonaSelectedCountForPrecio() !== 1 ? 's' : '' }} · {{ selectedPriceLabel() }}
+                    </span>
+                    <span class="zone-detail__qty-sub">
+                      Total seleccionado: {{ zonaSelectedCount() }} entrada{{ zonaSelectedCount() !== 1 ? 's' : '' }}
+                    </span>
+                  </div>
+                  <button class="qty-btn" (click)="removeOneFromZona()"
+                          [disabled]="zonaSelectedCount() === 0 || pendingIds().size > 0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                  <div class="qty-center">
+                    @if (pendingIds().size > 0) {
+                      <div class="qty-spinner"></div>
+                    } @else {
+                      <span class="qty-value">{{ zonaSelectedCount() }}</span>
+                    }
+                  </div>
+                  <button class="qty-btn" (click)="addOneFromZona()"
+                          [disabled]="zonaSelectedCountForPrecio() >= zonaPrecioMax() || pendingIds().size > 0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </div>
+                <p class="zone-detail__hint">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  Prereservadas automáticamente durante 10 min
+                </p>
+              }
             </div>
           }
         </div>
       }
 
+      <!-- ══ BUTACAS PRECISAS ══ -->
       @if ((activeTab() === 'precisa' || !hasZona()) && hasPrecisa()) {
         <div class="seat-picker">
           @if (plantas().length > 1) {
@@ -196,7 +232,7 @@
               }
             </div>
           }
-          <div class="seat-screen">ESCENARIO / PANTALLA</div>
+          <div class="seat-screen">— ESCENARIO / PANTALLA —</div>
           <div class="seat-legend">
             <span class="seat-legend__item"><span class="seat-dot seat-dot--free"></span> Libre</span>
             <span class="seat-legend__item"><span class="seat-dot seat-dot--selected"></span> Reservado</span>
@@ -206,9 +242,10 @@
             <div class="seat-grid">
               @for (row of seatGrid(); track trackByIndex($index)) {
                 <div class="seat-row">
-                  <span class="seat-row__label">{{ $index + 1 }}</span>
+                  <span class="seat-row__label">F{{ $index + 1 }}</span>
                   @for (cell of row; track trackById($index, cell)) {
-                    <button class="seat"
+                    <button
+                      class="seat"
                       [class.seat--free]="cell.state === 'free'"
                       [class.seat--selected]="cell.state === 'selected'"
                       [class.seat--taken]="cell.state === 'taken' || !cell.entrada"
@@ -218,16 +255,19 @@
                       [disabled]="!cell.entrada || cell.state === 'taken' || cell.state === 'loading'"
                       [attr.title]="cell.entrada
                         ? 'Fila ' + cell.entrada.fila + ' · Col ' + cell.entrada.columna + ' · ' + (cell.entrada.precio | number:'1.2-2') + '€'
-                        : null"
+                        : 'Sin entrada'"
                       (click)="toggleSeat(cell)">
                       @if (cell.state === 'loading') {
                         <span class="seat__spinner"></span>
                       } @else {
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/>
                           <path d="M2 14h20v6H2z"/>
                           <path d="M6 14v-4M18 14v-4"/>
                         </svg>
+                        @if (cell.entrada) {
+                          <span class="seat__col">C{{ cell.entrada.columna }}</span>
+                        }
                       }
                     </button>
                   }
@@ -252,6 +292,7 @@
 
     </section>
 
+    <!-- ══ SIDEBAR — CARRITO ══ -->
     <aside class="detail-sidebar">
       <div class="order-card" [style.--accent]="accentColor()">
         <h2 class="order-card__title">Tu selección</h2>
@@ -263,7 +304,7 @@
               <line x1="3" y1="6" x2="21" y2="6"/>
               <path d="M16 10a4 4 0 0 1-8 0"/>
             </svg>
-            <p>Selecciona entradas para ver el resumen</p>
+            <p>Selecciona entradas<br>para ver el resumen</p>
           </div>
         } @else {
           <ul class="order-lines">
@@ -271,7 +312,7 @@
               <li class="order-line">
                 <span class="order-line__desc">
                   @if (e.tipo === 'ZONA') {
-                    Zona {{ $any(e).zona }} · Entrada
+                    Zona {{ $any(e).zona }} · {{ e.precio | number:'1.2-2' }}€
                   } @else {
                     Pl.{{ $any(e).planta }} F{{ $any(e).fila }}-C{{ $any(e).columna }}
                   }

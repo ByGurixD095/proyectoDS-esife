@@ -139,7 +139,7 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
   flex-shrink: 0;
-  line-height: 0; /* prevent icon offset */
+  line-height: 0;
 }
 
 .order-line__remove:hover:not(:disabled) {
@@ -169,7 +169,7 @@
   50%       { opacity: 0.4 }
 }
 
-.detail-error{
+.detail-error {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -263,7 +263,6 @@
 
 .detail-hero__sep { color: var(--color-border); }
 
-/* Stats row */
 .detail-hero__stats {
   display: flex;
   gap: var(--space-lg);
@@ -296,7 +295,6 @@
   color: var(--color-text-muted);
 }
 
-/* Occupation bar */
 .detail-hero__occ {
   display: flex;
   align-items: center;
@@ -325,7 +323,6 @@
   white-space: nowrap;
 }
 
-/* Decorative initials */
 .detail-hero__deco {
   flex-shrink: 0;
   position: relative;
@@ -354,6 +351,8 @@
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: var(--space-xl);
+  /* CRITICAL: align-items start prevents sidebar from stretching
+     and allows sticky to work correctly */
   align-items: start;
 }
 
@@ -368,6 +367,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+  /* min-height 0 allows the picker to shrink without pushing the grid */
+  min-height: 0;
 }
 
 /* Tab switcher */
@@ -408,101 +409,160 @@
   margin: 0;
 }
 
-/* ── Zone picker ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   ZONE PICKER — nuevo diseño escalonado
+══════════════════════════════════════════════════════════════ */
 .zone-picker {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
 }
 
+/* Contenedor del mapa de zonas */
 .zone-map {
   --accent: var(--color-accent);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  align-items: center;
+  gap: 6px;
 }
 
 /* Stage bar */
 .zone-map__stage {
+  width: 52%;
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: var(--radius-sm);
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   padding: var(--space-sm) var(--space-lg);
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--accent);
   text-transform: uppercase;
+  margin-bottom: 0;
 }
 
-/* Zones grid */
-.zone-map__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-md);
-}
-
-.zone-block {
-  --zone-hue: calc(200 + var(--zone-idx, 0) * 37);
+/* Cada fila de zona se ensancha según su distancia al escenario */
+.zone-row {
+  width: 100%;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+}
+
+.zone-row--1 { width: 58%; }
+.zone-row--2 { width: 78%; }
+.zone-row--3 { width: 100%; }
+
+/* El bloque de zona en sí — fondo sólido sin gradiente */
+.zone-block {
+  width: 100%;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: var(--space-md);
-  background: var(--color-surface-raised);
-  border: 2px solid var(--color-border);
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border: 2px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.18s ease;
   font-family: var(--font-body);
-  text-align: center;
+  text-align: left;
+  gap: var(--space-md);
+
+  /* color sólido por zona — se sobreescribe con nth-child o data attr */
+  background: var(--zone-bg, var(--color-surface-raised));
+  border-color: var(--zone-border, var(--color-border));
+}
+
+/* Colores sólidos por zona */
+.zone-block--z1 {
+  --zone-bg:     rgba(224, 123, 57, 0.10);
+  --zone-border: rgba(224, 123, 57, 0.30);
+}
+.zone-block--z2 {
+  --zone-bg:     rgba(108, 92, 231, 0.10);
+  --zone-border: rgba(108, 92, 231, 0.30);
+}
+.zone-block--z3 {
+  --zone-bg:     rgba(0, 184, 148, 0.08);
+  --zone-border: rgba(0, 184, 148, 0.28);
+}
+/* fallback para zonas adicionales */
+.zone-block--z4 {
+  --zone-bg:     rgba(232, 67, 147, 0.09);
+  --zone-border: rgba(232, 67, 147, 0.28);
 }
 
 .zone-block:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  filter: brightness(1.15);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 15%, transparent);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
 }
 
 .zone-block--selected {
   border-color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent),
-              0 6px 20px color-mix(in srgb, var(--accent) 20%, transparent);
+              0 6px 20px rgba(0,0,0,0.2);
 }
 
 .zone-block--soldout {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+  filter: none;
+}
+
+/* Zona label/stats (izquierda) */
+.zone-block__left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .zone-block__label {
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .zone-block__seats {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
+/* Precio (derecha) */
 .zone-block__price {
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
 }
 
-/* Zone detail card */
+.zone-block__price-from {
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.zone-block__price-val {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ── Price chips (aparecen al seleccionar zona) ──────────────── */
 .zone-detail {
   --accent: var(--color-accent);
   background: var(--color-surface);
@@ -524,11 +584,12 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .zone-detail__title {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
@@ -543,18 +604,90 @@
   border-radius: var(--radius-full);
 }
 
-.zone-detail__price {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--accent);
+/* Grid de chips de precio — siempre en una fila de 4 */
+.zone-price-chips {
+  display: flex;
+  gap: var(--space-sm);
 }
 
-/* Quantity control */
+.price-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 16px;
+  background: var(--color-surface-raised);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;               /* los 4 chips se reparten el ancho */
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-body);
+}
+
+.price-chip:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.price-chip--active {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.price-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.price-chip__label {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.price-chip__count {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Stepper debajo de los chips */
 .zone-detail__qty {
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.zone-detail__qty-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.zone-detail__qty-label {
+  font-size: 0.8rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.zone-detail__qty-sub {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
 }
 
 .qty-btn {
@@ -569,6 +702,7 @@
   color: var(--color-text);
   cursor: pointer;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
 
 .qty-btn:hover:not(:disabled) {
@@ -591,6 +725,16 @@
   text-align: center;
 }
 
+.zone-detail__hint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* ── Seat picker ─────────────────────────────────────────────── */
 .seat-picker {
   display: flex;
@@ -598,7 +742,6 @@
   gap: var(--space-md);
 }
 
-/* Planta tabs */
 .planta-tabs {
   display: flex;
   gap: var(--space-sm);
@@ -624,7 +767,6 @@
   color: #fff;
 }
 
-/* Screen bar */
 .seat-screen {
   background: color-mix(in srgb, #94a3b8 12%, transparent);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
@@ -635,12 +777,10 @@
   letter-spacing: 0.18em;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  perspective-origin: center;
   transform: perspective(600px) rotateX(-10deg);
   margin-bottom: calc(-1 * var(--space-xs));
 }
 
-/* Legend */
 .seat-legend {
   display: flex;
   gap: var(--space-lg);
@@ -666,10 +806,12 @@
 .seat-dot--selected { background: color-mix(in srgb, var(--color-accent) 25%, transparent); border-color: var(--color-accent); }
 .seat-dot--taken    { background: var(--color-surface-raised); border-color: var(--color-border); }
 
-/* Seat grid */
 .seat-grid-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
   overflow-x: auto;
-  padding-bottom: var(--space-sm);
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
@@ -677,14 +819,14 @@
 .seat-grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: fit-content;
 }
 
 .seat-row {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
 }
 
 .seat-row__label {
@@ -693,26 +835,36 @@
   width: 20px;
   text-align: right;
   flex-shrink: 0;
-  margin-right: 4px;
+  margin-right: 6px;
   font-family: var(--font-display);
   font-weight: 600;
 }
 
-/* Individual seat */
 .seat {
   --accent: var(--color-accent);
-  width: 26px;
-  height: 26px;
+  width: 38px;
+  height: 38px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 5px 5px 3px 3px;
+  gap: 2px;
+  border-radius: 6px 6px 4px 4px;
   border: 1.5px solid;
   cursor: pointer;
   transition: all 0.12s;
   padding: 0;
   position: relative;
   flex-shrink: 0;
+  font-family: var(--font-body);
+}
+
+/* Número de columna dentro de la butaca */
+.seat__col {
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  font-family: var(--font-display);
 }
 
 .seat--free {
@@ -724,16 +876,17 @@
 .seat--free:hover {
   background: color-mix(in srgb, #00b894 25%, transparent);
   border-color: #00b894;
-  transform: scale(1.15);
+  transform: scale(1.15) translateY(-2px);
   z-index: 2;
+  box-shadow: 0 6px 16px rgba(0,184,148,0.2);
 }
 
 .seat--selected {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
   border-color: var(--accent);
   color: var(--accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
-  transform: scale(1.1);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
+  transform: scale(1.1) translateY(-1px);
   z-index: 1;
 }
 
@@ -743,7 +896,19 @@
   border-color: var(--color-border);
   color: var(--color-border);
   cursor: default;
-  opacity: 0.4;
+  opacity: 0.35;
+}
+
+/* Tooltip */
+.seat[title] {
+  cursor: pointer;
+}
+
+/* Precio debajo del icono de butaca */
+.seat__price {
+  font-size: 0.48rem;
+  line-height: 1;
+  opacity: 0.8;
 }
 
 .seat-hint {
@@ -765,10 +930,21 @@
   text-align: center;
 }
 
-/* ── Sidebar / Order card ─────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   SIDEBAR — STICKY FIX
+   position:sticky requiere que el padre tenga align-items:start
+   (ya corregido en .detail-layout) y top menor que la altura
+   del viewport.  Navbar = 64px + topbar = ~53px = 117px total
+   pero topbar no está siempre visible → usamos solo navbar: 72px
+══════════════════════════════════════════════════════════════ */
 .detail-sidebar {
   position: sticky;
-  top: 80px;
+  top: 72px;
+  /* Previene que el sidebar sea más alto que la ventana */
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .order-card {
@@ -804,13 +980,12 @@
 .order-card__empty svg { opacity: 0.3; }
 .order-card__empty p   { font-size: 0.82rem; margin: 0; }
 
-/* Order lines */
 .order-lines {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;
@@ -832,7 +1007,6 @@
 .order-line__desc  { color: var(--color-text-muted); flex: 1; min-width: 0; }
 .order-line__price { font-weight: 600; color: var(--color-text); white-space: nowrap; }
 
-/* Total */
 .order-total {
   display: flex;
   justify-content: space-between;
@@ -851,7 +1025,6 @@
   letter-spacing: -0.03em;
 }
 
-/* Buy button */
 .btn-buy {
   display: flex;
   align-items: center;
@@ -877,6 +1050,12 @@
   box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
+.btn-buy:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-cancel {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
@@ -895,7 +1074,6 @@
   color: #e07b39;
 }
 
-/* Confirm block */
 .order-confirm {
   display: flex;
   flex-direction: column;
@@ -915,7 +1093,6 @@
   gap: var(--space-xs);
 }
 
-/* Processing */
 .order-processing {
   display: flex;
   align-items: center;
@@ -926,7 +1103,6 @@
   color: var(--color-text-muted);
 }
 
-/* Success */
 .order-success {
   display: flex;
   flex-direction: column;
@@ -943,7 +1119,6 @@
   margin: 0;
 }
 
-/* Error */
 .order-error {
   display: flex;
   flex-direction: column;
