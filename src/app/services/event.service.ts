@@ -258,4 +258,4 @@ export class EventService {
       { headers: { 'X-User-Email': correoUsuario } }
     );
   }
-}
+} 

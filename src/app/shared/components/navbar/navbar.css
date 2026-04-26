@@ -1,45 +1,125 @@
+/* ─────────────────────────────────────────────────────────────
+   NAVBAR — Apple glass nav
+   Fondo: rgba(0,0,0,0.8) + backdrop-filter
+   Altura: 48px (especificación Apple)
+───────────────────────────────────────────────────────────── */
+
 .navbar {
-  display: flex;
-  align-items: center;
+  display:         flex;
+  align-items:     center;
   justify-content: space-between;
-  padding: 0 var(--space-lg);
-  height: 64px;
-  backdrop-filter: blur(20px);
-  background: rgba(15, 23, 42, 0.6);
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  padding:         0 24px;
+  height:          48px;
+
+  /* El efecto cristal Apple — non-negotiable */
+  background:        rgba(0, 0, 0, 0.8);
+  backdrop-filter:   saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+
+  border-bottom:   1px solid rgba(255, 255, 255, 0.08);
+  position:        sticky;
+  top:             0;
+  z-index:         100;
 }
 
+/* ── Brand ──────────────────────────────────────────────────── */
 .navbar__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+  display:         flex;
+  align-items:     center;
+  gap:             8px;
   text-decoration: none;
-  color: var(--color-text);
+  color:           #ffffff;
+  cursor:          pointer;
 }
 
 .navbar__logo-mark {
-  color: var(--color-accent);
-  font-size: 1.2rem;
-  line-height: 1;
+  /* Cuadrado de acento — único toque de color */
+  width:           22px;
+  height:          22px;
+  background:      var(--color-accent);
+  border-radius:   5px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+}
+
+.navbar__logo-mark svg {
+  display: block;
 }
 
 .navbar__logo-text {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-  color: var(--color-text);
+  font-family:    var(--font-display);
+  font-size:      17px;
+  font-weight:    600;
+  letter-spacing: -0.374px;
+  color:          #ffffff;
+  line-height:    1;
 }
 
 .navbar__logo-text strong {
-  color: var(--color-accent);
   font-weight: 700;
+  color:       #ffffff;
 }
 
+/* ── Actions ────────────────────────────────────────────────── */
 .navbar__actions {
-  display: flex;
+  display:     flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap:         8px;
+}
+
+/* Botones dentro de la navbar — tamaño compacto */
+.navbar .btn {
+  font-size:   12px;
+  font-weight: 400;
+  padding:     6px 14px;
+  line-height: 1;
+}
+
+.navbar .btn--ghost {
+  color:        rgba(255, 255, 255, 0.8);
+  border-color: transparent;
+}
+
+.navbar .btn--ghost:hover {
+  color:        #ffffff;
+  border-color: transparent;
+  background:   rgba(255, 255, 255, 0.1);
+}
+
+.navbar .btn--primary {
+  background:   var(--color-accent);
+  color:        #ffffff;
+  border-color: transparent;
+  border-radius: var(--radius-full);
+}
+
+.navbar .btn--primary:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ── Usuario logueado ───────────────────────────────────────── */
+.navbar__user-email {
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.56);
+  max-width:      180px;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  white-space:    nowrap;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 16px;
+  }
+
+  /* Ocultar "Crear cuenta" en móvil muy pequeño */
+  .navbar__actions .btn--primary span {
+    display: none;
+  }
 }

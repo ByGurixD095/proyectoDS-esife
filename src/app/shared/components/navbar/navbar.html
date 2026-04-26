@@ -1,23 +1,40 @@
 <nav class="navbar">
   <div class="navbar__brand">
-    <span class="navbar__logo-mark">■</span>
+    <div class="navbar__logo-mark">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M2 6L5 9L10 3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
     <span class="navbar__logo-text">esi<strong>entradas</strong></span>
   </div>
 
   <div class="navbar__actions">
-    <button
-      class="btn btn--ghost"
-      (click)="onLoginClick()"
-      aria-label="Iniciar sesión"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-      <span>Entrar</span>
-    </button>
-    <button class="btn btn--primary" (click)="onLoginClick()">
-      Crear cuenta
-    </button>
+
+    @if (auth.isLoggedIn()) {
+      <span class="navbar__user-email">{{ auth.getEmail() }}</span>
+      <button class="btn btn--ghost" (click)="auth.logout()" aria-label="Cerrar sesión">
+        Salir
+      </button>
+    } @else {
+      <button class="btn btn--ghost" (click)="openLogin()" aria-label="Iniciar sesión">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>Entrar</span>
+      </button>
+      <button class="btn btn--primary" (click)="openRegister()">
+        Crear cuenta
+      </button>
+    }
+
   </div>
 </nav>
+
+@if (showModal()) {
+  <app-auth-modal
+    [initialView]="modalView()"
+    (closed)="closeModal()"
+    (loggedIn)="closeModal()">
+  </app-auth-modal>
+}

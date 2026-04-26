@@ -1,0 +1,420 @@
+<!-- Backdrop -->
+<div class="auth-backdrop" (click)="close()">
+  <div class="auth-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+    <!-- Close -->
+    <button class="auth-modal__close" (click)="close()" aria-label="Cerrar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <!-- ══ LOGIN ══════════════════════════════════════════════ -->
+    @if (view() === 'login') {
+      <div class="auth-form" [@fadeSlide]>
+
+        <div class="auth-form__header">
+          <h2 class="auth-form__title">Iniciar sesión</h2>
+          <p class="auth-form__sub">Accede con tu nombre de usuario o correo</p>
+        </div>
+
+        <div class="auth-fields">
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="login-id">Usuario o correo</label>
+            <input
+              id="login-id"
+              class="auth-field__input"
+              type="text"
+              placeholder="nombre o correo@ejemplo.com"
+              [(ngModel)]="loginId"
+              autocomplete="username"
+              (keyup.enter)="submitLogin()"
+            />
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="login-pwd">Contraseña</label>
+            <div class="auth-field__pwd-wrap">
+              <input
+                id="login-pwd"
+                class="auth-field__input"
+                [type]="showPwd() ? 'text' : 'password'"
+                placeholder="Tu contraseña"
+                [(ngModel)]="loginPwd"
+                autocomplete="current-password"
+                (keyup.enter)="submitLogin()"
+              />
+              <button class="auth-field__eye" type="button"
+                      (click)="showPwd.set(!showPwd())"
+                      [attr.aria-label]="showPwd() ? 'Ocultar' : 'Mostrar'">
+                @if (showPwd()) {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                } @else {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                }
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        @if (error()) {
+          <p class="auth-error">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error() }}
+          </p>
+        }
+
+        <button class="auth-btn auth-btn--primary"
+                (click)="submitLogin()"
+                [disabled]="loading()">
+          @if (loading()) {
+            <span class="auth-spinner"></span>
+            Entrando…
+          } @else {
+            Iniciar sesión
+          }
+        </button>
+
+        <button class="auth-link" (click)="goTo('forgot')">
+          ¿Olvidaste tu contraseña?
+        </button>
+
+        <div class="auth-divider"><span>¿No tienes cuenta?</span></div>
+
+        <button class="auth-btn auth-btn--ghost" (click)="goTo('register')">
+          Crear cuenta
+        </button>
+
+      </div>
+    }
+
+    <!-- ══ REGISTER ═══════════════════════════════════════════ -->
+    @if (view() === 'register') {
+      <div class="auth-form">
+
+        <div class="auth-form__header">
+          <h2 class="auth-form__title">Crear cuenta</h2>
+          <p class="auth-form__sub">Completa los datos para registrarte</p>
+        </div>
+
+        <div class="auth-fields">
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reg-name">Nombre de usuario</label>
+            <input
+              id="reg-name"
+              class="auth-field__input"
+              type="text"
+              placeholder="tunombredeusuario"
+              [(ngModel)]="regName"
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reg-email">Correo electrónico</label>
+            <input
+              id="reg-email"
+              class="auth-field__input"
+              type="email"
+              placeholder="correo@ejemplo.com"
+              [(ngModel)]="regEmail"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reg-pwd1">Contraseña</label>
+            <div class="auth-field__pwd-wrap">
+              <input
+                id="reg-pwd1"
+                class="auth-field__input"
+                [type]="showPwd() ? 'text' : 'password'"
+                placeholder="Mínimo 8 caracteres"
+                [(ngModel)]="regPwd1"
+                autocomplete="new-password"
+              />
+              <button class="auth-field__eye" type="button"
+                      (click)="showPwd.set(!showPwd())">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  @if (showPwd()) {
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  } @else {
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  }
+                </svg>
+              </button>
+            </div>
+            <!-- Password strength meter -->
+            @if (regPwd1.length > 0) {
+              <div class="auth-pwd-strength">
+                <div class="auth-pwd-strength__bar">
+                  <div class="auth-pwd-strength__fill"
+                       [class]="'auth-pwd-strength__fill--' + pwdStrength(regPwd1)">
+                  </div>
+                </div>
+                <span class="auth-pwd-strength__label"
+                      [class]="'auth-pwd-strength__label--' + pwdStrength(regPwd1)">
+                  {{ pwdStrengthLabel(regPwd1) }}
+                </span>
+              </div>
+            }
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reg-pwd2">Repite la contraseña</label>
+            <div class="auth-field__pwd-wrap">
+              <input
+                id="reg-pwd2"
+                class="auth-field__input"
+                [type]="showPwd2() ? 'text' : 'password'"
+                placeholder="Repite la contraseña"
+                [(ngModel)]="regPwd2"
+                autocomplete="new-password"
+              />
+              <button class="auth-field__eye" type="button"
+                      (click)="showPwd2.set(!showPwd2())">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  @if (showPwd2()) {
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  } @else {
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  }
+                </svg>
+              </button>
+            </div>
+            @if (regPwd2.length > 0 && regPwd1 !== regPwd2) {
+              <p class="auth-field__hint auth-field__hint--error">Las contraseñas no coinciden</p>
+            }
+            @if (regPwd2.length > 0 && regPwd1 === regPwd2 && regPwd1.length >= 8) {
+              <p class="auth-field__hint auth-field__hint--ok">Las contraseñas coinciden ✓</p>
+            }
+          </div>
+
+        </div>
+
+        @if (error()) {
+          <p class="auth-error">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error() }}
+          </p>
+        }
+
+        <button class="auth-btn auth-btn--primary"
+                (click)="submitRegister()"
+                [disabled]="loading()">
+          @if (loading()) {
+            <span class="auth-spinner"></span>
+            Creando cuenta…
+          } @else {
+            Crear cuenta
+          }
+        </button>
+
+        <div class="auth-divider"><span>¿Ya tienes cuenta?</span></div>
+
+        <button class="auth-btn auth-btn--ghost" (click)="goTo('login')">
+          Iniciar sesión
+        </button>
+
+      </div>
+    }
+
+    <!-- ══ FORGOT PASSWORD ════════════════════════════════════ -->
+    @if (view() === 'forgot') {
+      <div class="auth-form">
+
+        <div class="auth-form__header">
+          <button class="auth-back" (click)="goTo('login')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Volver
+          </button>
+          <h2 class="auth-form__title">Recuperar contraseña</h2>
+          <p class="auth-form__sub">Te enviaremos un token de recuperación por correo</p>
+        </div>
+
+        @if (!success()) {
+          <div class="auth-fields">
+            <div class="auth-field">
+              <label class="auth-field__label" for="forgot-email">Correo electrónico</label>
+              <input
+                id="forgot-email"
+                class="auth-field__input"
+                type="email"
+                placeholder="correo@ejemplo.com"
+                [(ngModel)]="forgotEmail"
+                autocomplete="email"
+                (keyup.enter)="submitForgot()"
+              />
+            </div>
+          </div>
+
+          @if (error()) {
+            <p class="auth-error">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {{ error() }}
+            </p>
+          }
+
+          <button class="auth-btn auth-btn--primary"
+                  (click)="submitForgot()"
+                  [disabled]="loading()">
+            @if (loading()) {
+              <span class="auth-spinner"></span>
+              Enviando…
+            } @else {
+              Enviar token
+            }
+          </button>
+
+          <button class="auth-link" (click)="goTo('reset')">
+            Ya tengo un token
+          </button>
+        }
+
+        @if (success()) {
+          <div class="auth-success">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <p>{{ success() }}</p>
+          </div>
+          <button class="auth-link" (click)="goTo('reset')">
+            Introducir token de recuperación →
+          </button>
+        }
+
+      </div>
+    }
+
+    <!-- ══ RESET PASSWORD ══════════════════════════════════════ -->
+    @if (view() === 'reset') {
+      <div class="auth-form">
+
+        <div class="auth-form__header">
+          <button class="auth-back" (click)="goTo('forgot')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Volver
+          </button>
+          <h2 class="auth-form__title">Nueva contraseña</h2>
+          <p class="auth-form__sub">Introduce el token recibido por correo y tu nueva contraseña</p>
+        </div>
+
+        <div class="auth-fields">
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reset-token">Token de recuperación</label>
+            <input
+              id="reset-token"
+              class="auth-field__input auth-field__input--mono"
+              type="text"
+              placeholder="Pega el token aquí"
+              [(ngModel)]="resetToken"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reset-pwd">Nueva contraseña</label>
+            <div class="auth-field__pwd-wrap">
+              <input
+                id="reset-pwd"
+                class="auth-field__input"
+                [type]="showPwd() ? 'text' : 'password'"
+                placeholder="Mínimo 8 caracteres"
+                [(ngModel)]="resetPwd"
+                autocomplete="new-password"
+              />
+              <button class="auth-field__eye" type="button"
+                      (click)="showPwd.set(!showPwd())">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-field__label" for="reset-pwd2">Repite la contraseña</label>
+            <input
+              id="reset-pwd2"
+              class="auth-field__input"
+              type="password"
+              placeholder="Repite la contraseña"
+              [(ngModel)]="resetPwd2"
+              autocomplete="new-password"
+              (keyup.enter)="submitReset()"
+            />
+          </div>
+
+        </div>
+
+        @if (error()) {
+          <p class="auth-error">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error() }}
+          </p>
+        }
+
+        <button class="auth-btn auth-btn--primary"
+                (click)="submitReset()"
+                [disabled]="loading()">
+          @if (loading()) {
+            <span class="auth-spinner"></span>
+            Guardando…
+          } @else {
+            Cambiar contraseña
+          }
+        </button>
+
+      </div>
+    }
+
+    <!-- ══ DONE ════════════════════════════════════════════════ -->
+    @if (view() === 'done') {
+      <div class="auth-form auth-form--centered">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="1.8">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <h2 class="auth-form__title">¡Contraseña cambiada!</h2>
+        <p class="auth-form__sub">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+        <button class="auth-btn auth-btn--primary" (click)="goTo('login')">
+          Iniciar sesión
+        </button>
+      </div>
+    }
+
+  </div>
+</div>

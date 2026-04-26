@@ -1,62 +1,95 @@
+/* ─────────────────────────────────────────────────────────────
+   SEARCH BAR — Apple style
+   Contexto: sobre el hero negro → input translúcido blanco
+   Focus ring: azul Apple #0071e3
+───────────────────────────────────────────────────────────── */
+
 .search-bar {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  width:     100%;
+  max-width: 560px;
+  margin:    0 auto;
 }
 
 .search-bar__inner {
   position: relative;
-  display: flex;
+  display:  flex;
   align-items: center;
 }
 
 .search-bar__icon {
-  position: absolute;
-  left: var(--space-md);
-  color: var(--color-text-muted);
+  position:       absolute;
+  left:           16px;
+  color:          rgba(255,255,255,0.48);
   pointer-events: none;
-  flex-shrink: 0;
+  flex-shrink:    0;
+  transition:     color 0.2s;
 }
 
+/* Input — estilo Apple search field sobre fondo oscuro */
 .search-bar__input {
-  width: 100%;
-  padding: var(--space-md) var(--space-lg) var(--space-md) calc(var(--space-md) + 18px + var(--space-sm));
-  background: var(--color-surface-raised);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--color-text);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  width:          100%;
+  padding:        12px 44px 12px 44px;
+  background:     rgba(255,255,255,0.10);
+  border:         1px solid rgba(255,255,255,0.16);
+  border-radius:  var(--radius-full);
+  font-family:    var(--font-body);
+  font-size:      17px;
+  font-weight:    400;
+  letter-spacing: -0.374px;
+  color:          #ffffff;
+  outline:        none;
+  transition:     background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .search-bar__input::placeholder {
-  color: var(--color-text-muted);
+  color: rgba(255,255,255,0.40);
+}
+
+.search-bar__input:hover {
+  background:   rgba(255,255,255,0.13);
+  border-color: rgba(255,255,255,0.25);
 }
 
 .search-bar__input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 15%, transparent);
+  background:   rgba(255,255,255,0.14);
+  border-color: var(--color-accent-dark, #2997ff);
+  box-shadow:   0 0 0 3px rgba(41,151,255,0.20);
 }
 
+/* Icono activo cuando hay foco */
+.search-bar__inner:focus-within .search-bar__icon {
+  color: rgba(255,255,255,0.72);
+}
+
+/* Botón clear */
 .search-bar__clear {
-  position: absolute;
-  right: var(--space-md);
-  display: flex;
-  align-items: center;
+  position:        absolute;
+  right:           12px;
+  display:         flex;
+  align-items:     center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  width:           24px;
+  height:          24px;
+  border-radius:   50%;
+  border:          none;
+  background:      rgba(255,255,255,0.15);
+  color:           rgba(255,255,255,0.72);
+  cursor:          pointer;
+  transition:      background 0.15s, color 0.15s;
+  flex-shrink:     0;
 }
 
 .search-bar__clear:hover {
-  background: var(--color-accent);
-  color: white;
+  background: rgba(255,255,255,0.25);
+  color:      #ffffff;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .search-bar__input {
+    font-size: 16px; /* evita zoom en iOS */
+    padding:   11px 40px 11px 40px;
+  }
 }

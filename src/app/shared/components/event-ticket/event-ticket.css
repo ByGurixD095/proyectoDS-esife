@@ -1,346 +1,344 @@
+/* ─────────────────────────────────────────────────────────────
+   EVENT TICKET — tarjeta estilo Apple
+   Fondo: #ffffff, borde sutil, sombra difusa
+   Sin bordes de color — solo el stub izquierdo lleva el acento
+───────────────────────────────────────────────────────────── */
+
 /* ── Ticket Shell ──────────────────────────────────────────── */
 .ticket {
   --genre-color: var(--color-accent);
 
-  display: flex;
-  align-items: stretch;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  min-height: 180px;
+  display:        flex;
+  align-items:    stretch;
+  background:     #ffffff;
+  border:         1px solid rgba(0,0,0,0.09);
+  border-radius:  var(--radius-md);
+  overflow:       hidden;
+  cursor:         pointer;
+  transition:     box-shadow 0.25s, transform 0.25s;
+  min-height:     148px;
+
+  /* Sombra Apple — suave, difusa, una sola */
+  box-shadow: rgba(0,0,0,0.04) 0px 2px 12px 0px;
 }
 
 .ticket:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--genre-color) 12%, transparent),
-              0 2px 6px color-mix(in srgb, black 8%, transparent);
+  transform:  translateY(-2px);
+  box-shadow: var(--shadow-card);
 }
 
-/* ── Left Stub (like a real ticket stub) ──────────────────── */
+/* ── Left Stub ─────────────────────────────────────────────── */
 .ticket__stub {
-  display: flex;
+  display:        flex;
   flex-direction: column;
-  align-items: center;
+  align-items:    center;
   justify-content: space-between;
-  padding: var(--space-md) var(--space-sm);
-  width: 52px;
-  background: var(--genre-color);
-  flex-shrink: 0;
+  padding:        16px 8px;
+  width:          48px;
+  background:     var(--genre-color);
+  flex-shrink:    0;
 }
 
 .ticket__stub-initials {
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  writing-mode: vertical-rl;
+  font-family:      var(--font-display);
+  font-size:        0.7rem;
+  font-weight:      700;
+  color:            rgba(255,255,255,0.9);
+  writing-mode:     vertical-rl;
   text-orientation: mixed;
-  transform: rotate(180deg);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.9;
+  transform:        rotate(180deg);
+  letter-spacing:   0.12em;
+  text-transform:   uppercase;
 }
 
 .ticket__barcode {
-  display: flex;
+  display:     flex;
   align-items: flex-end;
-  gap: 2px;
+  gap:         2px;
 }
 
 .ticket__bar {
-  display: block;
-  width: 2px;
-  background: rgba(255,255,255,0.4);
+  display:       block;
+  width:         2px;
+  background:    rgba(255,255,255,0.35);
   border-radius: 1px;
 }
 
-/* ── Perforation (Gestalt: continuity / separation) ───────── */
+/* ── Perforation ───────────────────────────────────────────── */
 .ticket__perf {
-  width: 12px;
-  flex-shrink: 0;
+  width:            10px;
+  flex-shrink:      0;
+  background-color: #f5f5f7;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent,
     transparent 6px,
-    var(--color-border) 6px,
-    var(--color-border) 8px
+    rgba(0,0,0,0.08) 6px,
+    rgba(0,0,0,0.08) 7px
   );
-  background-color: var(--color-bg);
   position: relative;
 }
 
 .ticket__perf::before,
 .ticket__perf::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 16px;
-  height: 16px;
+  content:    '';
+  position:   absolute;
+  left:       50%;
+  transform:  translateX(-50%);
+  width:      14px;
+  height:     14px;
   border-radius: 50%;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: #f5f5f7;
+  border:     1px solid rgba(0,0,0,0.08);
 }
 
-.ticket__perf::before { top: -8px; }
-.ticket__perf::after  { bottom: -8px; }
+.ticket__perf::before { top:    -7px; }
+.ticket__perf::after  { bottom: -7px; }
 
-/* ── Ticket Body ──────────────────────────────────────────── */
+/* ── Ticket Body ───────────────────────────────────────────── */
 .ticket__body {
-  display: flex;
+  display:        flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-md) var(--space-md) var(--space-sm);
-  flex: 1;
-  min-width: 0;
+  gap:            10px;
+  padding:        16px 16px 16px 12px;
+  flex:           1;
+  min-width:      0;
 }
 
-/* Header badges (Gestalt: proximity) */
+/* ── Header badges ─────────────────────────────────────────── */
 .ticket__header {
-  display: flex;
+  display:   flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap:       6px;
   flex-wrap: wrap;
 }
 
 .ticket__genre-badge {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--genre-color);
-  background: color-mix(in srgb, var(--genre-color) 12%, transparent);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--genre-color) 25%, transparent);
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(0,0,0,0.60);
+  /* Sin color de acento en badges — Apple usa texto neutro */
 }
 
 .ticket__demand-badge {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #e07b39;
-  background: color-mix(in srgb, #e07b39 10%, transparent);
-  padding: 2px 7px;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, #e07b39 20%, transparent);
+  display:        flex;
+  align-items:    center;
+  gap:            3px;
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          #ff9500;      /* Apple orange (warning) */
 }
 
-/* Title block (Gestalt: similarity – same visual weight = same level) */
+.ticket__demand-badge--soldout {
+  color: rgba(0,0,0,0.40);
+}
+
+/* ── Title block ───────────────────────────────────────────── */
 .ticket__title-block {
-  display: flex;
+  display:        flex;
   flex-direction: column;
-  gap: 2px;
+  gap:            2px;
 }
 
 .ticket__artist {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0;
+  font-family:    var(--font-display);
+  font-size:      21px;
+  font-weight:    600;
+  letter-spacing: -0.374px;
+  line-height:    1.14;
+  color:          #1d1d1f;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  margin:         0;
 }
 
 .ticket__name {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-family:    var(--font-body);
+  font-size:      14px;
+  font-weight:    400;
+  letter-spacing: -0.224px;
+  color:          rgba(0,0,0,0.48);
+  margin:         0;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
 }
 
-/* Info row (Gestalt: proximity groups date/venue) */
+/* ── Info row ──────────────────────────────────────────────── */
 .ticket__info-row {
-  display: flex;
+  display:     flex;
   align-items: center;
-  gap: var(--space-sm);
-  margin-top: auto;
+  gap:         12px;
+  flex-wrap:   wrap;
+  margin-top:  auto;
 }
 
 .ticket__info-cell {
-  display: flex;
+  display:        flex;
   flex-direction: column;
-  gap: 1px;
+  gap:            1px;
 }
 
 .ticket__info-label {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.06em;
+  color:          rgba(0,0,0,0.40);
   text-transform: uppercase;
 }
 
 .ticket__info-value {
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text);
+  font-family:    var(--font-display);
+  font-size:      14px;
+  font-weight:    600;
+  letter-spacing: -0.224px;
+  color:          #1d1d1f;
 }
 
 .ticket__info-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--color-border);
+  width:      1px;
+  height:     22px;
+  background: rgba(0,0,0,0.10);
   flex-shrink: 0;
 }
 
-/* Venue row */
-.ticket__venue {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ticket__venue svg {
-  flex-shrink: 0;
-}
-
-/* Footer (Gestalt: figure/ground – price stands out) */
-.ticket__footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: var(--space-xs);
-  border-top: 1px dashed var(--color-border);
-}
-
-.ticket__price-block {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.ticket__price-label {
-  font-size: 0.65rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ticket__price {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: -0.03em;
-}
-
-/* Status badges */
-.ticket__status {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-}
-
-.status--available {
-  background: color-mix(in srgb, #00b894 15%, transparent);
-  color: #00b894;
-  border: 1px solid color-mix(in srgb, #00b894 25%, transparent);
-}
-
-.status--sold-out {
-  background: color-mix(in srgb, #636e72 15%, transparent);
-  color: #636e72;
-  border: 1px solid color-mix(in srgb, #636e72 25%, transparent);
-  text-decoration: line-through;
-}
-
-.status--queue {
-  background: color-mix(in srgb, #fdcb6e 15%, transparent);
-  color: #b8860b;
-  border: 1px solid color-mix(in srgb, #fdcb6e 35%, transparent);
-}
-
-.status--upcoming {
-  background: color-mix(in srgb, #74b9ff 15%, transparent);
-  color: #0984e3;
-  border: 1px solid color-mix(in srgb, #74b9ff 35%, transparent);
-}
-
-/* ── Ocupation bar ───────────────────────────────────────── */
+/* ── Ocupation bar ─────────────────────────────────────────── */
 .ticket__ocupation {
-  display: flex;
+  display:     flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap:         8px;
 }
 
 .ticket__ocupation-bar {
-  flex: 1;
-  height: 4px;
-  background: var(--color-border);
+  flex:          1;
+  height:        3px;
+  background:    rgba(0,0,0,0.10);
   border-radius: var(--radius-full);
-  overflow: hidden;
+  overflow:      hidden;
 }
 
 .ticket__ocupation-fill {
-  height: 100%;
-  background: var(--genre-color, var(--color-accent));
+  height:        100%;
+  background:    var(--genre-color, var(--color-accent));
   border-radius: var(--radius-full);
-  transition: width 0.6s ease;
+  transition:    width 0.6s ease;
 }
 
 .ticket__ocupation-label {
-  font-size: 0.62rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  letter-spacing: 0.04em;
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(0,0,0,0.40);
+  white-space:    nowrap;
 }
 
-/* ── Price states ────────────────────────────────────────── */
+/* ── Footer ────────────────────────────────────────────────── */
+.ticket__footer {
+  display:         flex;
+  align-items:     flex-end;
+  justify-content: space-between;
+  margin-top:      auto;
+  padding-top:     10px;
+  border-top:      1px solid rgba(0,0,0,0.07);
+}
+
+.ticket__price-block {
+  display:     flex;
+  align-items: baseline;
+  gap:         4px;
+}
+
+.ticket__price-label {
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(0,0,0,0.40);
+}
+
+/* "Ver precios" — como un link Apple */
+.ticket__price {
+  font-family:    var(--font-body);
+  font-size:      14px;
+  font-weight:    400;
+  letter-spacing: -0.224px;
+  color:          var(--color-link-light);
+}
+
+.ticket__price::after {
+  content: ' ›';
+}
+
 .ticket__price--loading {
-  letter-spacing: 0.2em;
-  opacity: 0.4;
+  color:   rgba(0,0,0,0.25);
   animation: pulse 1.2s ease-in-out infinite;
 }
 
 .ticket__price--error {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color:     rgba(0,0,0,0.35);
 }
 
-.ticket__demand-badge--soldout {
-  color: #636e72;
-  background: color-mix(in srgb, #636e72 10%, transparent);
-  border-color: color-mix(in srgb, #636e72 20%, transparent);
+/* ── Status badges ─────────────────────────────────────────── */
+.ticket__status {
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  padding:        3px 12px;
+  border-radius:  var(--radius-full);
 }
 
-/* ── Status extra states ─────────────────────────────────── */
+.status--available {
+  background: rgba(52, 199, 89, 0.12);   /* Apple green */
+  color:      #1a8a3a;
+  border:     1px solid rgba(52,199,89,0.20);
+}
+
+.status--sold-out {
+  background: rgba(0,0,0,0.05);
+  color:      rgba(0,0,0,0.35);
+  border:     1px solid rgba(0,0,0,0.08);
+  text-decoration: line-through;
+}
+
+.status--queue {
+  background: rgba(255,149,0,0.10);     /* Apple orange */
+  color:      #b35c00;
+  border:     1px solid rgba(255,149,0,0.20);
+}
+
+.status--upcoming {
+  background: rgba(0,113,227,0.08);     /* Apple blue */
+  color:      var(--color-link-light);
+  border:     1px solid rgba(0,113,227,0.15);
+}
+
 .status--loading {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  animation: pulse 1.2s ease-in-out infinite;
+  background: rgba(0,0,0,0.05);
+  color:      rgba(0,0,0,0.28);
+  border:     1px solid rgba(0,0,0,0.06);
+  animation:  pulse 1.2s ease-in-out infinite;
 }
 
 .status--partial {
-  background: color-mix(in srgb, #fdcb6e 15%, transparent);
-  color: #b8860b;
-  border: 1px solid color-mix(in srgb, #fdcb6e 35%, transparent);
+  background: rgba(255,149,0,0.10);
+  color:      #b35c00;
+  border:     1px solid rgba(255,149,0,0.20);
 }
 
+/* ── Animations ────────────────────────────────────────────── */
 @keyframes pulse {
-  0%, 100% { opacity: 1 }
-  50%       { opacity: 0.4 }
+  0%,100% { opacity: 1   }
+  50%     { opacity: 0.4 }
 }

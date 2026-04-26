@@ -1,125 +1,142 @@
 <app-navbar (loginClicked)="openLogin()"></app-navbar>
 
-<!-- ── Hero / Search ──────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════
+     HERO — fondo negro, texto blanco
+══════════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero__content">
     <p class="hero__eyebrow">Entradas para espectáculos</p>
-    <h1 class="hero__title">Hogar de tu<br><em>próxima experiencia</em></h1>
+    <h1 class="hero__title">Tu próxima<br>experiencia.</h1>
+    <p class="hero__subtitle">Encuentra y reserva entradas para los mejores espectáculos.</p>
     <app-search-bar></app-search-bar>
-  </div>
-  <div class="hero__decoration" aria-hidden="true">
-    <span class="deco-ring deco-ring--1"></span>
-    <span class="deco-ring deco-ring--2"></span>
-    <span class="deco-ring deco-ring--3"></span>
+    <div class="hero__tags">
+      <button class="hero__tag">Música</button>
+      <button class="hero__tag">Teatro</button>
+      <button class="hero__tag">Danza</button>
+      <button class="hero__tag">Comedia</button>
+    </div>
   </div>
 </section>
 
-<!-- ── Events Section ─────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════
+     EVENTS SECTION — fondo #f5f5f7, texto oscuro
+══════════════════════════════════════════════════════════════ -->
 <main class="events-section">
-  <div class="events-section__header">
-    <div class="events-section__title-group">
-      <h2 class="events-section__title">
-        @if (eventService.searchQuery()) {
-          Resultados para <em>"{{ eventService.searchQuery() }}"</em>
-        } @else {
-          Todos los espectáculos
-        }
-      </h2>
-      @if (!eventService.loading()) {
-        <span class="events-section__count">
-          {{ eventService.filteredEspectaculos().length }} eventos
-        </span>
-      }
-    </div>
-    <app-view-toggle></app-view-toggle>
-  </div>
+  <div class="events-section__inner">
 
-  <!-- Loading skeleton -->
-  @if (eventService.loading()) {
-    <div class="skeleton-grid">
-      @for (i of [1,2,3,4,5,6]; track i) {
-        <div class="skeleton-ticket">
-          <div class="skeleton-stub"></div>
-          <div class="skeleton-body">
-            <div class="skeleton-line skeleton-line--short"></div>
-            <div class="skeleton-line skeleton-line--long"></div>
-            <div class="skeleton-line skeleton-line--medium"></div>
-          </div>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Error state -->
-  @if (eventService.error() && !eventService.loading()) {
-    <div class="error-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <p>{{ eventService.error() }}</p>
-      <button class="btn btn--ghost" (click)="eventService.loadAll()">Reintentar</button>
-    </div>
-  }
-
-  <!-- Empty search result -->
-  @if (!eventService.loading() && !eventService.error() && eventService.filteredEspectaculos().length === 0) {
-    <div class="empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-      </svg>
-      <p>No encontramos espectáculos para <strong>"{{ eventService.searchQuery() }}"</strong></p>
-      <p class="empty-state__sub">Prueba con otro artista o recinto</p>
-    </div>
-  }
-
-  <!-- BY-EVENT grid -->
-  @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-event') {
-    <div class="events-grid">
-      @for (esp of eventService.filteredEspectaculos(); track esp.id) {
-        <app-event-ticket [espectaculo]="esp"></app-event-ticket>
-      }
-    </div>
-  }
-
-  <!-- BY-VENUE grouped -->
-  @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-venue') {
-    @for (group of eventService.espectaculosByVenue(); track group.escenarioNombre) {
-      <section class="venue-group">
-        <div class="venue-group__header">
-          <div class="venue-group__icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            </svg>
-          </div>
-          <h3 class="venue-group__name">{{ group.escenarioNombre }}</h3>
-          <span class="venue-group__count">
-            {{ group.espectaculos.length }} evento{{ group.espectaculos.length !== 1 ? 's' : '' }}
-          </span>
-        </div>
-        <div class="events-grid venue-group__grid">
-          @for (esp of group.espectaculos; track esp.id) {
-            <app-event-ticket [espectaculo]="esp"></app-event-ticket>
+    <div class="events-section__header">
+      <div class="events-section__title-group">
+        <h2 class="events-section__title">
+          @if (eventService.searchQuery()) {
+            Resultados para <em>"{{ eventService.searchQuery() }}"</em>
+          } @else {
+            Todos los espectáculos
           }
-        </div>
-      </section>
+        </h2>
+        @if (!eventService.loading()) {
+          <span class="events-section__count">
+            {{ eventService.filteredEspectaculos().length }} eventos
+          </span>
+        }
+      </div>
+      <app-view-toggle></app-view-toggle>
+    </div>
+
+    <!-- Skeleton loading -->
+    @if (eventService.loading()) {
+      <div class="skeleton-grid">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="skeleton-ticket">
+            <div class="skeleton-stub"></div>
+            <div class="skeleton-body">
+              <div class="skeleton-line skeleton-line--short"></div>
+              <div class="skeleton-line skeleton-line--long"></div>
+              <div class="skeleton-line skeleton-line--medium"></div>
+            </div>
+          </div>
+        }
+      </div>
     }
-  }
+
+    <!-- Error state -->
+    @if (eventService.error() && !eventService.loading()) {
+      <div class="error-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p>{{ eventService.error() }}</p>
+        <button class="btn btn--ghost" (click)="eventService.loadAll()" style="color:#1d1d1f; border-color:rgba(0,0,0,0.20);">
+          Reintentar
+        </button>
+      </div>
+    }
+
+    <!-- Empty search result -->
+    @if (!eventService.loading() && !eventService.error() && eventService.filteredEspectaculos().length === 0) {
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <p>No encontramos espectáculos para <strong>"{{ eventService.searchQuery() }}"</strong></p>
+        <p class="empty-state__sub">Prueba con otro artista o recinto</p>
+      </div>
+    }
+
+    <!-- BY-EVENT grid -->
+    @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-event') {
+      <div class="events-grid">
+        @for (esp of eventService.filteredEspectaculos(); track esp.id) {
+          <app-event-ticket [espectaculo]="esp"></app-event-ticket>
+        }
+      </div>
+    }
+
+    <!-- BY-VENUE grouped -->
+    @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-venue') {
+      @for (group of eventService.espectaculosByVenue(); track group.escenarioNombre) {
+        <section class="venue-group">
+          <div class="venue-group__header">
+            <div class="venue-group__icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+            </div>
+            <h3 class="venue-group__name">{{ group.escenarioNombre }}</h3>
+            <span class="venue-group__count">
+              {{ group.espectaculos.length }} evento{{ group.espectaculos.length !== 1 ? 's' : '' }}
+            </span>
+          </div>
+          <div class="events-grid--by-event">
+            @for (esp of group.espectaculos; track esp.id) {
+              <app-event-ticket [espectaculo]="esp"></app-event-ticket>
+            }
+          </div>
+        </section>
+      }
+    }
+
+  </div>
 </main>
 
-<!-- ── Login Modal (stub — will redirect to esiusuarios) ──── -->
+<!-- ══════════════════════════════════════════════════════════════
+     LOGIN MODAL
+══════════════════════════════════════════════════════════════ -->
 @if (showLoginModal()) {
   <div class="modal-backdrop" (click)="closeLogin()">
     <div class="modal" (click)="$event.stopPropagation()">
       <button class="modal__close" (click)="closeLogin()" aria-label="Cerrar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
       </button>
       <div class="modal__stub-badge">Stub — próxima iteración</div>
       <h2 class="modal__title">Accede a tu cuenta</h2>
       <p class="modal__sub">
-        El botón redirigirá a <strong>esiusuarios (:8081)</strong> para autenticarse.
-        Después devolverá un token para completar la compra en <strong>esientradas (:8080)</strong>.
+        El botón redirigirá a <strong>esiusuarios (:8081)</strong> para autenticarse
+        y devolverá un token para completar la compra en <strong>esientradas (:8080)</strong>.
       </p>
       <div class="modal__fields">
         <input class="modal__input" type="email" placeholder="correo@ejemplo.com" disabled/>
@@ -132,6 +149,9 @@
   </div>
 }
 
+<!-- ══════════════════════════════════════════════════════════════
+     FOOTER — sobre negro
+══════════════════════════════════════════════════════════════ -->
 <footer class="site-footer">
-  <span>Trabajo DS · Gonzalo López Rordíguez · 2025-2026</span>
+  <span>Trabajo DS · Gonzalo López Rodríguez · 2025–2026</span>
 </footer>

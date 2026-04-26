@@ -1,36 +1,58 @@
+/* ─────────────────────────────────────────────────────────────
+   VIEW TOGGLE — Segmented Control estilo Apple
+   Contexto: sobre la sección #f5f5f7 (clara)
+   El segmented control es el patrón nativo de iOS/macOS
+───────────────────────────────────────────────────────────── */
+
 .view-toggle {
-  display: inline-flex;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  display:       inline-flex;
+  background:    rgba(0,0,0,0.06);
   border-radius: var(--radius-full);
-  padding: 3px;
-  gap: 2px;
+  padding:       2px;
+  gap:           2px;
+  /* Sin borde exterior — Apple no usa borde en el segmented control */
 }
 
 .view-toggle__btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 6px var(--space-md);
-  border: none;
-  border-radius: var(--radius-full);
-  background: transparent;
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  display:        flex;
+  align-items:    center;
+  gap:            6px;
+  padding:        6px 16px;
+  border:         none;
+  border-radius:  var(--radius-full);
+  background:     transparent;
+  font-family:    var(--font-body);
+  font-size:      14px;
+  font-weight:    400;
+  letter-spacing: -0.224px;
+  color:          rgba(0,0,0,0.48);
+  cursor:         pointer;
+  transition:     all 0.18s;
+  white-space:    nowrap;
+  -webkit-user-select: none;
+  user-select:    none;
 }
 
 .view-toggle__btn:hover:not(.view-toggle__btn--active) {
-  background: var(--color-border);
-  color: var(--color-text);
+  color: rgba(0,0,0,0.72);
 }
 
+/* Segmento activo — píldora blanca con sombra sutil */
 .view-toggle__btn--active {
-  background: var(--color-accent);
-  color: #fff;
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background:  #ffffff;
+  color:       #1d1d1f;
+  box-shadow:  0 1px 4px rgba(0,0,0,0.12),
+               0 0px 1px rgba(0,0,0,0.08);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Ocultar el texto, dejar solo iconos en móvil */
+  .view-toggle__btn span {
+    display: none;
+  }
+
+  .view-toggle__btn {
+    padding: 7px 12px;
+  }
 }
