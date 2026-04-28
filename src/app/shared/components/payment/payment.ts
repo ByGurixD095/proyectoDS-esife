@@ -6,20 +6,19 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../services/auth.service';
 import { EventService } from '../../../services/event.service';
 
-// Stripe.js se carga dinámicamente — no hay tipos disponibles
-// sin instalar @stripe/stripe-js, declaramos lo mínimo necesario
+// Stripe.js se carga dinámicamente
 declare const Stripe: any;
 
 const API        = 'http://localhost:8080';
 const STRIPE_PK  = 'pk_test_51TR7K9JUYvjfABrOihbe5I6FN0fX3CXMLnirSsWpgqnZV16RK5tloClbWfsE1raWkKZ8b3SpGaeKfjM1Tq2BhdMo0015ldbcYs';
 
 export type PaymentStep =
-  | 'idle'        // esperando iniciar
-  | 'loading'     // cargando Stripe / creando PaymentIntent
-  | 'form'        // formulario de tarjeta visible
-  | 'processing'  // confirmando pago
-  | 'done'        // éxito
-  | 'error';      // error
+  | 'idle'
+  | 'loading'
+  | 'form'
+  | 'processing'
+  | 'done'
+  | 'error';
 
 @Component({
   selector: 'app-payment',
@@ -31,7 +30,6 @@ export type PaymentStep =
 export class PaymentComponent implements AfterViewInit, OnDestroy {
 
   // ── I/O ───────────────────────────────────────────────────
-  // Precio total en céntimos (el back lo espera así)
   @Input({ required: true }) precioCentimos!: number;
   @Input({ required: true }) tokenPrerreserva!: string;
   @Output() closed  = new EventEmitter<void>();
@@ -46,12 +44,18 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
   errorMsg     = signal<string | null>(null);
   successMsg   = signal<string | null>(null);
 
+  // Formateo del precio para la interfaz minimalista
+  get euros(): number { return Math.floor(this.precioCentimos / 100); }
+  get cents(): string { return (this.precioCentimos % 100).toString().padStart(2, '0'); }
+
   // ── Stripe internals ──────────────────────────────────────
-  private stripe:        any = null;
-  private elements:      any = null;
-  private cardElement:   any = null;
-  private clientSecret:  string = '';
-  private payerEmail:    string = '';
+  private stripe:            any = null;
+  private elements:          any = null;
+  private cardNumberElement: any = null;
+  private cardExpiryElement: any = null;
+  private cardCvcElement:    any = null;
+  private clientSecret:      string = '';
+  private payerEmail:        string = '';
 
   // ── Lifecycle ─────────────────────────────────────────────
   ngAfterViewInit(): void {
@@ -59,10 +63,9 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Destruye el elemento de Stripe al desmontar
-    if (this.cardElement) {
-      try { this.cardElement.destroy(); } catch (_) {}
-    }
+    if (this.cardNumberElement) { try { this.cardNumberElement.destroy(); } catch (_) {} }
+    if (this.cardExpiryElement) { try { this.cardExpiryElement.destroy(); } catch (_) {} }
+    if (this.cardCvcElement)    { try { this.cardCvcElement.destroy(); } catch (_) {} }
   }
 
   // ── 1. Carga Stripe.js dinámicamente ─────────────────────
@@ -104,7 +107,7 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
       next: res => {
         this.clientSecret = res.clientSecret;
         this.payerEmail   = res.email;
-        this._mountCardElement();
+        this._mountCardElements();
       },
       error: err => {
         this.step.set('error');
@@ -117,40 +120,51 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // ── 3. Monta el elemento de tarjeta de Stripe ────────────
-  private _mountCardElement(): void {
+  // ── 3. Monta los elementos de tarjeta de Stripe ───────────
+  private _mountCardElements(): void {
     this.stripe   = Stripe(STRIPE_PK);
     this.elements = this.stripe.elements();
 
-    this.cardElement = this.elements.create('card', {
-      style: {
-        base: {
-          color:                '#ffffff',
-          fontFamily:           '"Helvetica Neue", Helvetica, sans-serif',
-          fontSize:             '17px',
-          fontSmoothing:        'antialiased',
-          letterSpacing:        '-0.374px',
-          '::placeholder':      { color: 'rgba(255,255,255,0.30)' },
-          iconColor:            'rgba(255,255,255,0.56)',
-        },
-        invalid: {
-          color:     '#ff6b6b',
-          iconColor: '#ff6b6b',
-        },
+    const style = {
+      base: {
+        color:                '#ffffff',
+        fontFamily:           'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize:             '18px',
+        fontSmoothing:        'antialiased',
+        letterSpacing:        '0.08em',
+        '::placeholder':      { color: 'rgba(255,255,255,0.2)' },
+        iconColor:            'rgba(255,255,255,0.4)',
       },
-      hidePostalCode: true,
-    });
+      invalid: {
+        color:     '#ff6b6b',
+        iconColor: '#ff6b6b',
+      },
+    };
+
+    // Al estar separados, creamos los 3 campos de forma independiente
+    this.cardNumberElement = this.elements.create('cardNumber', { style, showIcon: true });
+    this.cardExpiryElement = this.elements.create('cardExpiry', { style });
+    this.cardCvcElement    = this.elements.create('cardCvc', { style });
 
     this.step.set('form');
-    // Espera al siguiente ciclo para que el DOM esté listo
+    
     setTimeout(() => {
-      const mountPoint = document.getElementById('stripe-card-element');
-      if (mountPoint) {
-        this.cardElement.mount(mountPoint);
+      const mountNumber = document.getElementById('stripe-card-number');
+      const mountExpiry = document.getElementById('stripe-card-expiry');
+      const mountCvc    = document.getElementById('stripe-card-cvc');
 
-        this.cardElement.on('change', (event: any) => {
+      if (mountNumber && mountExpiry && mountCvc) {
+        this.cardNumberElement.mount(mountNumber);
+        this.cardExpiryElement.mount(mountExpiry);
+        this.cardCvcElement.mount(mountCvc);
+
+        const handleChange = (event: any) => {
           this.errorMsg.set(event.error?.message ?? null);
-        });
+        };
+
+        this.cardNumberElement.on('change', handleChange);
+        this.cardExpiryElement.on('change', handleChange);
+        this.cardCvcElement.on('change', handleChange);
       } else {
         this.step.set('error');
         this.errorMsg.set('Error al cargar el formulario de pago.');
@@ -160,33 +174,30 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
 
   // ── 4. El usuario pulsa "Pagar" ───────────────────────────
   async submitPayment(): Promise<void> {
-    if (!this.stripe || !this.cardElement || this.step() === 'processing') return;
+    if (!this.stripe || !this.cardNumberElement || this.step() === 'processing') return;
 
     this.step.set('processing');
     this.errorMsg.set(null);
 
     try {
-      // Confirmamos el pago directamente con Stripe
-      // El backend NUNCA ve los datos de la tarjeta
       const { error, paymentIntent } = await this.stripe.confirmCardPayment(
         this.clientSecret,
         {
           payment_method: {
-            card: this.cardElement,
+            // Stripe extrae automáticamente Fecha y CVC al enviar cardNumber
+            card: this.cardNumberElement,
             billing_details: { email: this.payerEmail }
           }
         }
       );
 
       if (error) {
-        // Error de Stripe (tarjeta rechazada, fondos insuficientes, etc.)
         this.step.set('form');
         this.errorMsg.set(this._translateStripeError(error));
         return;
       }
 
       if (paymentIntent?.status === 'succeeded') {
-        // ── 5. Notificamos al backend para marcar las entradas ──
         this._confirmWithBackend(paymentIntent.id);
       } else {
         this.step.set('form');
@@ -217,8 +228,6 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
         this.success.emit(msg ?? '¡Compra realizada con éxito!');
       },
       error: () => {
-        // El pago YA se cobró en Stripe pero el backend falló
-        // Mostramos un mensaje específico para que el usuario contacte soporte
         this.step.set('error');
         this.errorMsg.set(
           'El pago fue procesado pero ocurrió un error al registrar las entradas. ' +
@@ -238,8 +247,7 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
       case 'incorrect_number':        return 'El número de tarjeta no es válido.';
       case 'processing_error':        return 'Error al procesar el pago. Inténtalo de nuevo.';
       case 'authentication_required': return 'Tu banco requiere autenticación adicional (3D Secure).';
-      default:
-        return error.message ?? 'Error al procesar el pago.';
+      default:                        return error.message ?? 'Error al procesar el pago.';
     }
   }
 
