@@ -9,9 +9,8 @@ import {
 
 const API = 'http://localhost:8080';
 
-// ── Session storage keys ──────────────────────────────────────
-const TOKEN_KEY = 'prereserva_token'; // string UUID | ''
-const IDS_KEY   = 'prereserva_ids';   // JSON: number[]
+const TOKEN_KEY = 'prereserva_token';
+const IDS_KEY   = 'prereserva_ids';
 
 function loadToken(): string {
   return sessionStorage.getItem(TOKEN_KEY) ?? '';
@@ -43,6 +42,10 @@ export class EventService {
 
   prereservaToken = this._prereservaToken.asReadonly();
   cartIds         = this._cartIds.asReadonly();
+
+  // ── Cache de entradas cargadas (para el dropdown del carrito) ─
+  // El componente de detalle las registra al cargarlas
+  private _cartEntradasCache: Entrada[] = [];
 
   // ── UI state ──────────────────────────────────────────────
   private _viewMode     = signal<ViewMode>('by-event');
@@ -81,16 +84,13 @@ export class EventService {
   });
 
   // ── View / search ─────────────────────────────────────────
-
   setViewMode(mode: ViewMode): void { this._viewMode.set(mode); }
 
   setSearchQuery(query: string): void {
     this._searchQuery.set(query);
     if (!query.trim()) { this.loadAll(); return; }
-
     this._loading.set(true);
     this._error.set(null);
-
     this.http.get<Espectaculo[]>(`${API}/espectaculos`, {
       params: { artista: query }
     }).pipe(
@@ -102,14 +102,13 @@ export class EventService {
   }
 
   // ── Espectaculos ─────────────────────────────────────────
-
   loadAll(): void {
     this._loading.set(true);
     this._error.set(null);
     this.http.get<Espectaculo[]>(`${API}/espectaculos`).pipe(
       tap(data => { this._espectaculos.set(data); this._loading.set(false); }),
       catchError(() => {
-        this._error.set('No se pudo conectar con el servidor. Asegúrate de que esientradas está arriba.');
+        this._error.set('No se pudo conectar con el servidor.');
         this._loading.set(false);
         return of([]);
       })
@@ -121,7 +120,6 @@ export class EventService {
   }
 
   // ── Escenarios ───────────────────────────────────────────
-
   loadEscenarios(): void {
     this.http.get<Escenario[]>(`${API}/escenarios`).pipe(
       tap(data => this._escenarios.set(data)),
@@ -130,7 +128,6 @@ export class EventService {
   }
 
   // ── Entradas ─────────────────────────────────────────────
-
   getEntradaById(espectaculoId: number, entradaId: number): Observable<Entrada> {
     return this.http.get<Entrada>(`${API}/espectaculos/${espectaculoId}/entradas/${entradaId}`);
   }
@@ -147,11 +144,31 @@ export class EventService {
     return this.http.get<number>(`${API}/espectaculos/${espectaculoId}/entradas/cantidad`);
   }
 
-  // ── Cart: prereserva session ──────────────────────────────
+  // ── Cart dropdown helpers ─────────────────────────────────
 
+  // El detalle registra sus entradas cargadas para que el dropdown
+  // pueda mostrarlas desde cualquier página
+  registerLoadedEntradas(entradas: Entrada[]): void {
+    this._cartEntradasCache = entradas;
+  }
+
+  // Devuelve las entradas en carrito (con datos completos si están cacheadas)
+  getCartEntradas(): Entrada[] {
+    const cartIds = this._cartIds();
+    return this._cartEntradasCache.filter(e => cartIds.has(e.id));
+  }
+
+  // Devuelve el espectaculoId de las entradas en carrito
+  getCartEspectaculoId(): number | null {
+    const cartIds = this._cartIds();
+    if (!cartIds.size) return null;
+    const entry = this._cartEntradasCache.find(e => cartIds.has(e.id));
+    return entry?.espectaculoId ?? null;
+  }
+
+  // ── Cart: prereserva session ──────────────────────────────
   addToCart(espectaculoId: number, entradaId: number): Observable<ReservaResponse> {
     const currentToken = this._prereservaToken();
-
     return new Observable(observer => {
       this.http.post<ReservaResponse>(
         `${API}/espectaculos/${espectaculoId}/entradas/${entradaId}/prerreservar`,
@@ -176,7 +193,6 @@ export class EventService {
 
   removeFromCart(espectaculoId: number, entradaId: number): Observable<void> {
     const token = this._prereservaToken();
-
     return new Observable(observer => {
       if (!token || !this._cartIds().has(entradaId)) {
         this._removeLocalId(entradaId);
@@ -184,7 +200,6 @@ export class EventService {
         observer.complete();
         return;
       }
-
       this.http.delete<void>(
         `${API}/espectaculos/${espectaculoId}/entradas/${entradaId}/prerreservar/${token}`
       ).subscribe({
@@ -206,7 +221,6 @@ export class EventService {
     ids.delete(entradaId);
     this._cartIds.set(ids);
     persistIds(ids);
-
     if (ids.size === 0) {
       this._prereservaToken.set('');
       sessionStorage.removeItem(TOKEN_KEY);
@@ -230,12 +244,12 @@ export class EventService {
   clearCart(): void {
     this._prereservaToken.set('');
     this._cartIds.set(new Set());
+    this._cartEntradasCache = [];
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(IDS_KEY);
   }
 
   // ── Compra ────────────────────────────────────────────────
-
   comprar(tokenPrerreserva: string, tokenUsuario: string): Observable<CompraResponse> {
     return this.http.post<CompraResponse>(`${API}/compras`, {
       tokenPrerreserva,
@@ -244,7 +258,6 @@ export class EventService {
   }
 
   // ── Cola ─────────────────────────────────────────────────
-
   unirseACola(espectaculoId: number, correoUsuario: string): Observable<ColaResponse> {
     return this.http.post<ColaResponse>(
       `${API}/espectaculos/${espectaculoId}/cola`, {},
@@ -258,4 +271,4 @@ export class EventService {
       { headers: { 'X-User-Email': correoUsuario } }
     );
   }
-} 
+}

@@ -1,8 +1,6 @@
-<app-navbar (loginClicked)="openLogin()"></app-navbar>
+<app-navbar></app-navbar>
 
-<!-- ══════════════════════════════════════════════════════════════
-     HERO — fondo negro, texto blanco
-══════════════════════════════════════════════════════════════ -->
+<!-- ══ HERO — fondo negro ══════════════════════════════════════ -->
 <section class="hero">
   <div class="hero__content">
     <p class="hero__eyebrow">Entradas para espectáculos</p>
@@ -18,9 +16,7 @@
   </div>
 </section>
 
-<!-- ══════════════════════════════════════════════════════════════
-     EVENTS SECTION — fondo #f5f5f7, texto oscuro
-══════════════════════════════════════════════════════════════ -->
+<!-- ══ EVENTS — fondo #f5f5f7 ═════════════════════════════════ -->
 <main class="events-section">
   <div class="events-section__inner">
 
@@ -42,7 +38,7 @@
       <app-view-toggle></app-view-toggle>
     </div>
 
-    <!-- Skeleton loading -->
+    <!-- Skeleton -->
     @if (eventService.loading()) {
       <div class="skeleton-grid">
         @for (i of [1,2,3,4,5,6]; track i) {
@@ -58,7 +54,7 @@
       </div>
     }
 
-    <!-- Error state -->
+    <!-- Error -->
     @if (eventService.error() && !eventService.loading()) {
       <div class="error-state">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -67,25 +63,27 @@
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <p>{{ eventService.error() }}</p>
-        <button class="btn btn--ghost" (click)="eventService.loadAll()" style="color:#1d1d1f; border-color:rgba(0,0,0,0.20);">
+        <button class="btn btn--ghost"
+                (click)="eventService.loadAll()"
+                style="color:#1d1d1f; border-color:rgba(0,0,0,0.20);">
           Reintentar
         </button>
       </div>
     }
 
-    <!-- Empty search result -->
+    <!-- Sin resultados -->
     @if (!eventService.loading() && !eventService.error() && eventService.filteredEspectaculos().length === 0) {
       <div class="empty-state">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="11" cy="11" r="8"/>
           <path d="m21 21-4.35-4.35"/>
         </svg>
-        <p>No encontramos espectáculos para <strong>"{{ eventService.searchQuery() }}"</strong></p>
+        <p>No encontramos resultados para <strong>"{{ eventService.searchQuery() }}"</strong></p>
         <p class="empty-state__sub">Prueba con otro artista o recinto</p>
       </div>
     }
 
-    <!-- BY-EVENT grid -->
+    <!-- Grid por espectáculo -->
     @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-event') {
       <div class="events-grid">
         @for (esp of eventService.filteredEspectaculos(); track esp.id) {
@@ -94,7 +92,7 @@
       </div>
     }
 
-    <!-- BY-VENUE grouped -->
+    <!-- Grid por recinto -->
     @if (!eventService.loading() && !eventService.error() && eventService.viewMode() === 'by-venue') {
       @for (group of eventService.espectaculosByVenue(); track group.escenarioNombre) {
         <section class="venue-group">
@@ -121,37 +119,6 @@
   </div>
 </main>
 
-<!-- ══════════════════════════════════════════════════════════════
-     LOGIN MODAL
-══════════════════════════════════════════════════════════════ -->
-@if (showLoginModal()) {
-  <div class="modal-backdrop" (click)="closeLogin()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <button class="modal__close" (click)="closeLogin()" aria-label="Cerrar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M18 6 6 18M6 6l12 12"/>
-        </svg>
-      </button>
-      <div class="modal__stub-badge">Stub — próxima iteración</div>
-      <h2 class="modal__title">Accede a tu cuenta</h2>
-      <p class="modal__sub">
-        El botón redirigirá a <strong>esiusuarios (:8081)</strong> para autenticarse
-        y devolverá un token para completar la compra en <strong>esientradas (:8080)</strong>.
-      </p>
-      <div class="modal__fields">
-        <input class="modal__input" type="email" placeholder="correo@ejemplo.com" disabled/>
-        <input class="modal__input" type="password" placeholder="Contraseña" disabled/>
-        <button class="btn btn--primary btn--full" disabled>
-          Ir a esiusuarios (no funcional aún)
-        </button>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- ══════════════════════════════════════════════════════════════
-     FOOTER — sobre negro
-══════════════════════════════════════════════════════════════ -->
 <footer class="site-footer">
   <span>Trabajo DS · Gonzalo López Rodríguez · 2025–2026</span>
 </footer>

@@ -10,13 +10,90 @@
 
   <div class="navbar__actions">
 
+    <!-- ── Carrito ────────────────────────────────────────── -->
+    @if (cartCount > 0) {
+      <div class="navbar__cart-wrap">
+        <button class="navbar__cart" (click)="toggleCart($event)"
+                [class.navbar__cart--open]="showCart()"
+                [attr.aria-label]="cartCount + ' entrada' + (cartCount !== 1 ? 's' : '') + ' en tu selección'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          <span class="navbar__cart-badge">{{ cartCount }}</span>
+        </button>
+
+        <!-- Dropdown -->
+        @if (showCart()) {
+          <div class="cart-dropdown" (click)="$event.stopPropagation()">
+
+            <div class="cart-dropdown__header">
+              <span class="cart-dropdown__title">Tu selección</span>
+              @if (cartEspectaculoNombre()) {
+                <span class="cart-dropdown__show">{{ cartEspectaculoNombre() }}</span>
+              }
+            </div>
+
+            <!-- Líneas de entradas (solo si están cacheadas) -->
+            @if (cartLines().length > 0) {
+              <ul class="cart-dropdown__lines">
+                @for (e of cartLines(); track e.id) {
+                  <li class="cart-dropdown__line">
+                    <span class="cart-dropdown__line-desc">
+                      @if (e.tipo === 'ZONA') {
+                        Zona {{ $any(e).zona }}
+                      } @else {
+                        Pl.{{ $any(e).planta }} · F{{ $any(e).fila }} C{{ $any(e).columna }}
+                      }
+                    </span>
+                    <span class="cart-dropdown__line-price">{{ e.precio | number:'1.2-2' }}€</span>
+                  </li>
+                }
+              </ul>
+              <div class="cart-dropdown__total">
+                <span>Total</span>
+                <span class="cart-dropdown__total-amount">{{ totalPrice() | number:'1.2-2' }}€</span>
+              </div>
+            } @else {
+              <!-- Solo conteo si no hay cache (usuario viene de otra sesión) -->
+              <div class="cart-dropdown__count-only">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <p>{{ cartCount }} entrada{{ cartCount !== 1 ? 's' : '' }} prereservada{{ cartCount !== 1 ? 's' : '' }}</p>
+              </div>
+            }
+
+            <div class="cart-dropdown__actions">
+              <button class="cart-dropdown__btn-primary" (click)="goToEspectaculo()">
+                Ir a la compra
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <p class="cart-dropdown__note">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Prereservadas 10 min
+              </p>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ── Auth ───────────────────────────────────────────── -->
     @if (auth.isLoggedIn()) {
       <span class="navbar__user-email">{{ auth.getEmail() }}</span>
-      <button class="btn btn--ghost" (click)="auth.logout()" aria-label="Cerrar sesión">
-        Salir
-      </button>
+      <button class="btn btn--ghost" (click)="auth.logout()">Salir</button>
     } @else {
-      <button class="btn btn--ghost" (click)="openLogin()" aria-label="Iniciar sesión">
+      <button class="btn btn--ghost" (click)="openLogin()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
@@ -31,6 +108,7 @@
   </div>
 </nav>
 
+<!-- Auth modal -->
 @if (showModal()) {
   <app-auth-modal
     [initialView]="modalView()"

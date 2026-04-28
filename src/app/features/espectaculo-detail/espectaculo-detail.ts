@@ -9,6 +9,8 @@ import { forkJoin } from 'rxjs';
 import {
   Espectaculo, Entrada, EntradaDeZona, EntradaPrecisa, EntradaInfo
 } from '../../models/event.model';
+import { AuthModalComponent, AuthView } from '../../shared/components/auth-modal/auth-modal';
+import { PaymentComponent } from '../../shared/components/payment/payment';
 
 export interface ZonaGroup {
   zona: number;
@@ -18,7 +20,7 @@ export interface ZonaGroup {
 }
 
 export interface PriceGroup {
-  label: string;         // "438€ – 470€"
+  label: string;
   rangeMin: number;
   rangeMax: number;
   disponibles: number;
@@ -36,7 +38,7 @@ export interface SeatCell {
 @Component({
   selector: 'app-espectaculo-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AuthModalComponent],
   templateUrl: './espectaculo-detail.html',
   styleUrls: ['./espectaculo-detail.css']
 })
@@ -53,7 +55,6 @@ export class EspectaculoDetailComponent implements OnInit {
   loading     = signal(true);
   error       = signal<string | null>(null);
 
-  // ── Espectaculo ID ────────────────────────────────────────
   private espectaculoId = 0;
 
   // ── Per-seat loading/error state ──────────────────────────
@@ -61,19 +62,31 @@ export class EspectaculoDetailComponent implements OnInit {
   errorIds   = signal<Set<number>>(new Set());
 
   // ── Zona / planta UI state ────────────────────────────────
-  selectedZona        = signal<number | null>(null);
-  selectedPriceGroup  = signal<number | null>(null);  // índice en zonaPriceGroups()
-  selectedPlanta      = signal<number | null>(null);
-  activeTab           = signal<'zona' | 'precisa'>('zona');
+  selectedZona       = signal<number | null>(null);
+  selectedPriceGroup = signal<number | null>(null);
+  selectedPlanta     = signal<number | null>(null);
+  activeTab          = signal<'zona' | 'precisa'>('zona');
 
   // ── Purchase flow ─────────────────────────────────────────
   purchaseStep = signal<'idle' | 'confirming' | 'processing' | 'done' | 'error'>('idle');
   purchaseMsg  = signal('');
 
+  // ── Auth modal (se abre cuando intenta comprar sin sesión) ─
+  showAuthModal = signal(false);
+  authModalView = signal<AuthView>('login');
+
+  // ── Payment modal ─────────────────────────────────────────
+  showPayment = signal(false);
+
+  // Precio total en céntimos para Stripe
+  totalPriceCentimos = computed(() =>
+    Math.round(this.cartEntradas().reduce((s, e) => s + e.precio, 0) * 100)
+  );
+
   // ── Accent color ──────────────────────────────────────────
   accentColor = computed((): string => {
     const esp = this.espectaculo();
-    if (!esp) return '#8b5cf6';
+    if (!esp) return '#0071e3';
     const palette = [
       '#e07b39', '#6c5ce7', '#00b894', '#e84393',
       '#0984e3', '#636e72', '#fd79a8', '#a29bfe'
@@ -110,75 +123,57 @@ export class EspectaculoDetailComponent implements OnInit {
       }));
   });
 
-  // Entradas de la zona actualmente seleccionada
   zonaEntradas = computed((): EntradaDeZona[] => {
     const z = this.selectedZona();
     if (z === null) return [];
     return this.entradasZona().filter(e => e.zona === z);
   });
 
-  // Cuántas entradas de esta zona están en el carrito (cualquier precio)
   zonaSelectedCount = computed((): number =>
     this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id)).length
   );
 
-  // ── Price groups: 4 tramos iguales (min→max dividido en 4) ──
   zonaPriceGroups = computed((): PriceGroup[] => {
     const entradas = this.zonaEntradas();
     if (!entradas.length) return [];
-
     const precios = entradas.map(e => e.precio);
     const min = Math.min(...precios);
     const max = Math.max(...precios);
-
-    // Si todos tienen el mismo precio → un solo chip
     if (min === max) {
       return [{
         label: `${min.toFixed(2)}€`,
-        rangeMin: min,
-        rangeMax: max,
+        rangeMin: min, rangeMax: max,
         disponibles: entradas.filter(e => !this.eventSvc.isInCart(e.id)).length,
-        total: entradas.length,
-        entradas,
+        total: entradas.length, entradas,
       }];
     }
-
     const N = 4;
     const step = (max - min) / N;
-
     return Array.from({ length: N }, (_, i) => {
       const rMin = min + i * step;
       const rMax = i === N - 1 ? max + 0.001 : min + (i + 1) * step;
       const bucket = entradas.filter(e => e.precio >= rMin && e.precio < rMax);
       return {
         label: `${Math.ceil(rMin)}€ – ${Math.floor(rMax - 0.001)}€`,
-        rangeMin: rMin,
-        rangeMax: rMax,
+        rangeMin: rMin, rangeMax: rMax,
         disponibles: bucket.filter(e => !this.eventSvc.isInCart(e.id)).length,
-        total: bucket.length,
-        entradas: bucket,
+        total: bucket.length, entradas: bucket,
       };
-    }).filter(g => g.total > 0);  // oculta tramos vacíos
+    }).filter(g => g.total > 0);
   });
 
-  // Entradas del grupo de precio seleccionado
   private zonaEntradasDelPrecio = computed((): EntradaDeZona[] => {
     const idx = this.selectedPriceGroup();
     if (idx === null) return [];
     return this.zonaPriceGroups()[idx]?.entradas ?? [];
   });
 
-  // Cuántas del grupo seleccionado están ya en el carrito
   zonaSelectedCountForPrecio = computed((): number =>
     this.zonaEntradasDelPrecio().filter(e => this.eventSvc.isInCart(e.id)).length
   );
 
-  // Máximo que se puede añadir con el grupo seleccionado
-  zonaPrecioMax = computed((): number =>
-    this.zonaEntradasDelPrecio().length
-  );
+  zonaPrecioMax = computed((): number => this.zonaEntradasDelPrecio().length);
 
-  // Label del grupo activo para mostrar en el stepper
   selectedPriceLabel = computed((): string => {
     const idx = this.selectedPriceGroup();
     if (idx === null) return '';
@@ -195,18 +190,13 @@ export class EspectaculoDetailComponent implements OnInit {
   seatGrid = computed((): SeatCell[][] => {
     const planta = this.selectedPlanta() ?? this.plantas()[0];
     if (planta === undefined) return [];
-
     const inPlanta = this.entradasPrecisas().filter(e => e.planta === planta);
     if (!inPlanta.length) return [];
-
     const maxFila = Math.max(...inPlanta.map(e => e.fila));
     const maxCol  = Math.max(...inPlanta.map(e => e.columna));
-
-    const posMap = new Map<string, EntradaPrecisa>();
+    const posMap  = new Map<string, EntradaPrecisa>();
     for (const e of inPlanta) posMap.set(`${e.fila}-${e.columna}`, e);
-
     const pending = this.pendingIds();
-
     const grid: SeatCell[][] = [];
     for (let f = 1; f <= maxFila; f++) {
       const row: SeatCell[] = [];
@@ -226,11 +216,10 @@ export class EspectaculoDetailComponent implements OnInit {
   });
 
   // ── Cart ──────────────────────────────────────────────────
-  cartEntradas = computed((): Entrada[] =>
+  cartEntradas  = computed((): Entrada[] =>
     this.entradas().filter(e => this.eventSvc.isInCart(e.id))
   );
-
-  totalPrice     = computed(() => this.cartEntradas().reduce((s, e) => s + e.precio, 0));
+  totalPrice    = computed(() => this.cartEntradas().reduce((s, e) => s + e.precio, 0));
   selectionCount = computed(() => this.cartEntradas().length);
 
   // ── Hero helpers ──────────────────────────────────────────
@@ -253,53 +242,42 @@ export class EspectaculoDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/']); return; }
-
     this.espectaculoId = id;
 
     const cached = this.eventSvc.espectaculos().find(e => e.id === id);
-    if (cached) {
-      this.espectaculo.set(cached);
-    } else {
-      this.eventSvc.getEspectaculoById(id).subscribe({
-        next: data => this.espectaculo.set(data),
-        error: () => {}
-      });
-    }
+    if (cached) this.espectaculo.set(cached);
+    else this.eventSvc.getEspectaculoById(id).subscribe({
+      next: data => this.espectaculo.set(data),
+      error: () => {}
+    });
 
     this.eventSvc.getEntradasByEspectaculo(id).subscribe({
       next: libres => {
         const libresIds = new Set(libres.map(e => e.id));
-
-        // IDs en carrito que no están entre las libres → están prereservadas
         const prereservadasIds = Array.from(this.eventSvc.cartIds())
           .filter(cartId => !libresIds.has(cartId));
 
         if (!prereservadasIds.length) {
           this.entradas.set(libres);
+          this.eventSvc.registerLoadedEntradas(libres); // ← expone al dropdown
           this.loading.set(false);
           this._initTabAndPlanta(libres);
           return;
         }
 
-        // Recuperar las entradas prereservadas en paralelo
-        const requests = prereservadasIds.map(eid =>
+        forkJoin(prereservadasIds.map(eid =>
           this.eventSvc.getEntradaById(id, eid)
-        );
-
-        forkJoin(requests).subscribe({
+        )).subscribe({
           next: prereservadas => {
-            // Filtra las que realmente son de este espectáculo
-            const deEsteEspectaculo = prereservadas.filter(
-              e => e.espectaculoId === id
-            );
-            const todas = [...libres, ...deEsteEspectaculo];
+            const todas = [...libres, ...prereservadas.filter(e => e.espectaculoId === id)];
             this.entradas.set(todas);
+            this.eventSvc.registerLoadedEntradas(todas); // ← expone al dropdown
             this.loading.set(false);
             this._initTabAndPlanta(todas);
           },
           error: () => {
-            // Si falla la recuperación, al menos muestra las libres
             this.entradas.set(libres);
+            this.eventSvc.registerLoadedEntradas(libres);
             this.loading.set(false);
             this._initTabAndPlanta(libres);
           }
@@ -321,7 +299,6 @@ export class EspectaculoDetailComponent implements OnInit {
     const hasZ = entradas.some(e => e.tipo === 'ZONA');
     const hasP = entradas.some(e => e.tipo === 'PRECISA');
     this.activeTab.set(hasZ ? 'zona' : 'precisa');
-
     if (hasP) {
       const plantas = Array.from(
         new Set((entradas.filter(e => e.tipo === 'PRECISA') as EntradaPrecisa[]).map(e => e.planta))
@@ -333,38 +310,32 @@ export class EspectaculoDetailComponent implements OnInit {
   // ── Navigation ────────────────────────────────────────────
   goBack(): void { this.router.navigate(['/']); }
 
-  // Al cambiar de zona se resetea el precio seleccionado
   selectZonaAndReset(zona: number): void {
     this.selectedZona.set(zona);
     this.selectedPriceGroup.set(null);
   }
 
-  selectZona(zona: number): void     { this.selectedZona.set(zona); }
   selectPlanta(planta: number): void { this.selectedPlanta.set(planta); }
-
-  selectPrecio(idx: number): void {
-    this.selectedPriceGroup.set(idx);
-  }
+  selectPrecio(idx: number): void    { this.selectedPriceGroup.set(idx); }
 
   addOneFromZona(): void {
-    const pool = this.selectedPriceGroup() !== null
-      ? this.zonaEntradasDelPrecio().filter(e => !this.eventSvc.isInCart(e.id))
-      : this.zonaEntradas().filter(e => !this.eventSvc.isInCart(e.id));
+    const pool = (this.selectedPriceGroup() !== null
+      ? this.zonaEntradasDelPrecio()
+      : this.zonaEntradas()
+    ).filter(e => !this.eventSvc.isInCart(e.id));
     const next = pool[0];
-    if (!next) return;
-    this._prereservar(next.id);
+    if (next) this._prereservar(next.id);
   }
 
   removeOneFromZona(): void {
-    const prereserved = this.selectedPriceGroup() !== null
-      ? this.zonaEntradasDelPrecio().filter(e => this.eventSvc.isInCart(e.id))
-      : this.zonaEntradas().filter(e => this.eventSvc.isInCart(e.id));
+    const prereserved = (this.selectedPriceGroup() !== null
+      ? this.zonaEntradasDelPrecio()
+      : this.zonaEntradas()
+    ).filter(e => this.eventSvc.isInCart(e.id));
     const last = prereserved[prereserved.length - 1];
-    if (!last) return;
-    this._cancelar(last.id);
+    if (last) this._cancelar(last.id);
   }
 
-  // ── Seat toggle ───────────────────────────────────────────
   toggleSeat(cell: SeatCell): void {
     if (!cell.entrada || cell.state === 'loading' || cell.state === 'taken') return;
     cell.state === 'selected'
@@ -372,55 +343,26 @@ export class EspectaculoDetailComponent implements OnInit {
       : this._prereservar(cell.entrada.id);
   }
 
-  // ── API calls ─────────────────────────────────────────────
-  private _prereservar(entradaId: number): void {
-    this._setPending(entradaId, true);
-    this._setError(entradaId, false);
-
-    this.eventSvc.addToCart(this.espectaculoId, entradaId).subscribe({
-      next:  () => this._setPending(entradaId, false),
-      error: () => {
-        this._setPending(entradaId, false);
-        this._setError(entradaId, true);
-        setTimeout(() => this._setError(entradaId, false), 3000);
-      }
-    });
-  }
-
-  private _cancelar(entradaId: number): void {
-    this._setPending(entradaId, true);
-    this.eventSvc.removeFromCart(this.espectaculoId, entradaId).subscribe({
-      next:  () => this._setPending(entradaId, false),
-      error: () => this._setPending(entradaId, false)
-    });
-  }
-
-  // ── Template helpers ──────────────────────────────────────
-  cancelarEntrada(entradaId: number): void { this._cancelar(entradaId); }
-  isInCart(id: number): boolean  { return this.eventSvc.isInCart(id); }
-  isPending(id: number): boolean { return this.pendingIds().has(id); }
-  hasError(id: number): boolean  { return this.errorIds().has(id); }
-
-  trackByIndex(i: number): number { return i; }
-  trackById(_: number, cell: SeatCell): number { return cell.entrada?.id ?? _; }
-
-  // ── Pending/error state ───────────────────────────────────
-  private _setPending(id: number, on: boolean): void {
-    const s = new Set(this.pendingIds());
-    on ? s.add(id) : s.delete(id);
-    this.pendingIds.set(s);
-  }
-
-  private _setError(id: number, on: boolean): void {
-    const s = new Set(this.errorIds());
-    on ? s.add(id) : s.delete(id);
-    this.errorIds.set(s);
-  }
-
   // ── Purchase flow ─────────────────────────────────────────
   confirmPurchase(): void {
     if (!this.selectionCount()) return;
-    this.purchaseStep.set('confirming');
+    if (!this.authSvc.isLoggedIn()) {
+      this.authModalView.set('login');
+      this.showAuthModal.set(true);
+      return;
+    }
+    this.showPayment.set(true);
+  }
+
+  onAuthSuccess(): void {
+    this.showAuthModal.set(false);
+    this.showPayment.set(true);
+  }
+
+  onPaymentSuccess(msg: string): void {
+    this.showPayment.set(false);
+    this.purchaseStep.set('done');
+    this.purchaseMsg.set(msg);
   }
 
   cancelConfirm(): void { this.purchaseStep.set('idle'); }
@@ -448,5 +390,47 @@ export class EspectaculoDetailComponent implements OnInit {
         this.purchaseMsg.set('Error al procesar la compra. Inténtalo de nuevo.');
       }
     });
+  }
+
+  // ── API calls ─────────────────────────────────────────────
+  private _prereservar(entradaId: number): void {
+    this._setPending(entradaId, true);
+    this._setError(entradaId, false);
+    this.eventSvc.addToCart(this.espectaculoId, entradaId).subscribe({
+      next:  () => this._setPending(entradaId, false),
+      error: () => {
+        this._setPending(entradaId, false);
+        this._setError(entradaId, true);
+        setTimeout(() => this._setError(entradaId, false), 3000);
+      }
+    });
+  }
+
+  private _cancelar(entradaId: number): void {
+    this._setPending(entradaId, true);
+    this.eventSvc.removeFromCart(this.espectaculoId, entradaId).subscribe({
+      next:  () => this._setPending(entradaId, false),
+      error: () => this._setPending(entradaId, false)
+    });
+  }
+
+  // ── Template helpers ──────────────────────────────────────
+  cancelarEntrada(entradaId: number): void { this._cancelar(entradaId); }
+  isInCart(id: number): boolean  { return this.eventSvc.isInCart(id); }
+  isPending(id: number): boolean { return this.pendingIds().has(id); }
+  hasError(id: number): boolean  { return this.errorIds().has(id); }
+  trackByIndex(i: number): number { return i; }
+  trackById(_: number, cell: SeatCell): number { return cell.entrada?.id ?? _; }
+
+  private _setPending(id: number, on: boolean): void {
+    const s = new Set(this.pendingIds());
+    on ? s.add(id) : s.delete(id);
+    this.pendingIds.set(s);
+  }
+
+  private _setError(id: number, on: boolean): void {
+    const s = new Set(this.errorIds());
+    on ? s.add(id) : s.delete(id);
+    this.errorIds.set(s);
   }
 }

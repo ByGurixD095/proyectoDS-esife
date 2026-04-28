@@ -1,0 +1,353 @@
+/* ─────────────────────────────────────────────────────────────
+   PAYMENT MODAL — Apple Design System
+   Mismo lenguaje visual que auth-modal
+───────────────────────────────────────────────────────────── */
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+.payment-backdrop {
+  position:        fixed;
+  inset:           0;
+  background:      rgba(0,0,0,0.60);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  z-index:         400;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         24px;
+  animation:       payFadeIn 0.2s ease;
+}
+
+/* ── Modal shell ─────────────────────────────────────────────── */
+.payment-modal {
+  background:    #1c1c1e;
+  border:        1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-xl, 28px);
+  padding:       40px 36px 36px;
+  width:         100%;
+  max-width:     420px;
+  position:      relative;
+  animation:     paySlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* ── Close ───────────────────────────────────────────────────── */
+.payment-modal__close {
+  position:        absolute;
+  top:             16px;
+  right:           16px;
+  width:           30px;
+  height:          30px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background:      rgba(255,255,255,0.08);
+  border:          none;
+  border-radius:   50%;
+  color:           rgba(255,255,255,0.56);
+  cursor:          pointer;
+  transition:      background 0.15s;
+}
+
+.payment-modal__close:hover {
+  background: rgba(255,255,255,0.16);
+  color:      #ffffff;
+}
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.payment-loading {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            16px;
+  padding:        24px 0;
+  color:          rgba(255,255,255,0.48);
+  font-family:    var(--font-body);
+  font-size:      14px;
+  letter-spacing: -0.224px;
+}
+
+/* ── Form ────────────────────────────────────────────────────── */
+.payment-form {
+  display:        flex;
+  flex-direction: column;
+  gap:            20px;
+}
+
+.payment-form__header {
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+}
+
+.payment-form__title {
+  font-family:    var(--font-display);
+  font-size:      28px;
+  font-weight:    600;
+  letter-spacing: -0.28px;
+  line-height:    1.07;
+  color:          #ffffff;
+  margin:         0;
+}
+
+.payment-form__sub {
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.48);
+  margin:         0;
+  line-height:    1.47;
+}
+
+/* ── Importe ─────────────────────────────────────────────────── */
+.payment-amount {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     baseline;
+  padding:         14px 16px;
+  background:      rgba(255,255,255,0.05);
+  border:          1px solid rgba(255,255,255,0.08);
+  border-radius:   var(--radius-md, 12px);
+}
+
+.payment-amount__label {
+  font-family:    var(--font-body);
+  font-size:      14px;
+  font-weight:    400;
+  letter-spacing: -0.224px;
+  color:          rgba(255,255,255,0.56);
+}
+
+.payment-amount__value {
+  font-family:    var(--font-display);
+  font-size:      24px;
+  font-weight:    600;
+  letter-spacing: -0.28px;
+  color:          #ffffff;
+}
+
+/* ── Campo de tarjeta ────────────────────────────────────────── */
+.payment-field {
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+}
+
+.payment-field__label {
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.72);
+}
+
+.payment-field__card-wrap {
+  background:    rgba(255,255,255,0.07);
+  border:        1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-md, 12px);
+  padding:       14px;
+  transition:    border-color 0.18s, box-shadow 0.18s;
+}
+
+/* Stripe monta su iframe aquí — le damos altura fija */
+.payment-field__card {
+  min-height: 24px;
+}
+
+/* Cuando Stripe indica foco, resaltamos el wrap */
+.payment-field__card-wrap:focus-within {
+  border-color: var(--color-accent-dark, #2997ff);
+  box-shadow:   0 0 0 3px rgba(41,151,255,0.18);
+}
+
+.payment-field__hint {
+  display:        flex;
+  align-items:    center;
+  gap:            5px;
+  font-family:    var(--font-body);
+  font-size:      12px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.28);
+  margin:         0;
+}
+
+/* ── Error ───────────────────────────────────────────────────── */
+.payment-error {
+  display:        flex;
+  align-items:    center;
+  gap:            7px;
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          #ff6b6b;
+  background:     rgba(255,59,48,0.10);
+  border:         1px solid rgba(255,59,48,0.20);
+  border-radius:  var(--radius-md, 12px);
+  padding:        10px 14px;
+  margin:         0;
+  line-height:    1.4;
+}
+
+/* ── Botón principal ─────────────────────────────────────────── */
+.payment-btn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             8px;
+  width:           100%;
+  padding:         14px 20px;
+  background:      var(--color-accent, #0071e3);
+  border:          none;
+  border-radius:   var(--radius-full, 980px);
+  font-family:     var(--font-body);
+  font-size:       17px;
+  font-weight:     400;
+  letter-spacing:  -0.374px;
+  color:           #ffffff;
+  cursor:          pointer;
+  transition:      background 0.2s, transform 0.2s;
+}
+
+.payment-btn:hover:not(:disabled) {
+  background: #0077ed;
+  transform:  translateY(-1px);
+}
+
+.payment-btn:active:not(:disabled) { background: #005bb5; transform: none; }
+
+.payment-btn:disabled {
+  opacity: 0.48;
+  cursor:  not-allowed;
+  transform: none;
+}
+
+/* ── Marcas de tarjeta ───────────────────────────────────────── */
+.payment-brands {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  justify-content: center;
+}
+
+.payment-brands__label {
+  font-family:    var(--font-body);
+  font-size:      11px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.24);
+}
+
+.payment-brands__icons {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+}
+
+.payment-brand-icon {
+  height:  18px;
+  opacity: 0.4;
+}
+
+/* ── Resultado (done / error) ────────────────────────────────── */
+.payment-result {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            12px;
+  text-align:     center;
+  padding:        8px 0;
+}
+
+.payment-result__icon {
+  width:           56px;
+  height:          56px;
+  border-radius:   50%;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  margin-bottom:   4px;
+}
+
+.payment-result--success .payment-result__icon {
+  background: rgba(52,199,89,0.12);
+  border:     1px solid rgba(52,199,89,0.20);
+}
+
+.payment-result--error .payment-result__icon {
+  background: rgba(255,59,48,0.10);
+  border:     1px solid rgba(255,59,48,0.20);
+}
+
+.payment-result__title {
+  font-family:    var(--font-display);
+  font-size:      24px;
+  font-weight:    600;
+  letter-spacing: -0.28px;
+  color:          #ffffff;
+  margin:         0;
+}
+
+.payment-result__msg {
+  font-family:    var(--font-body);
+  font-size:      14px;
+  font-weight:    400;
+  letter-spacing: -0.224px;
+  color:          rgba(255,255,255,0.72);
+  margin:         0;
+  line-height:    1.47;
+}
+
+.payment-result__sub {
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          rgba(255,255,255,0.40);
+  margin:         0;
+}
+
+/* ── Spinners ─────────────────────────────────────────────────── */
+.payment-spinner {
+  display:       block;
+  width:         28px;
+  height:        28px;
+  border:        2px solid rgba(255,255,255,0.15);
+  border-top-color: rgba(255,255,255,0.72);
+  border-radius: 50%;
+  animation:     paySpin 0.7s linear infinite;
+  flex-shrink:   0;
+}
+
+.payment-spinner--sm {
+  width:        16px;
+  height:       16px;
+  border-width: 2px;
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes payFadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes paySlideUp {
+  from { transform: translateY(28px) scale(0.97); opacity: 0 }
+  to   { transform: translateY(0)    scale(1);    opacity: 1 }
+}
+
+@keyframes paySpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .payment-modal {
+    padding:       28px 20px 24px;
+    border-radius: var(--radius-lg, 18px);
+  }
+
+  .payment-form__title { font-size: 22px; }
+  .payment-amount__value { font-size: 20px; }
+}

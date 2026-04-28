@@ -393,38 +393,6 @@
             </button>
           }
 
-          @if (purchaseStep() === 'confirming') {
-            <div class="order-confirm">
-              <p class="order-confirm__text">
-                @if (!authSvc.isLoggedIn()) {
-                  Necesitas iniciar sesión para completar la compra.
-                } @else {
-                  ¿Confirmar la compra de {{ selectionCount() }}
-                  entrada{{ selectionCount() !== 1 ? 's' : '' }} por
-                  <strong>{{ totalPrice() | number:'1.2-2' }}€</strong>?
-                }
-              </p>
-              <div class="order-confirm__btns">
-                @if (!authSvc.isLoggedIn()) {
-                  <button class="btn-buy" (click)="authSvc.redirectToLogin()">
-                    Iniciar sesión
-                  </button>
-                } @else {
-                  <button class="btn-buy" (click)="processPurchase()">
-                    Confirmar compra
-                  </button>
-                }
-                <button class="btn-cancel" (click)="cancelConfirm()">Cancelar</button>
-              </div>
-            </div>
-          }
-
-          @if (purchaseStep() === 'processing') {
-            <div class="order-processing">
-              <div class="order-processing__spinner"></div>
-              <span>Procesando…</span>
-            </div>
-          }
         }
 
         @if (purchaseStep() === 'done') {
@@ -437,21 +405,29 @@
           </div>
         }
 
-        @if (purchaseStep() === 'error') {
-          <div class="order-error">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <p>{{ purchaseMsg() }}</p>
-            <button class="btn-cancel" (click)="purchaseStep.set('idle')">Reintentar</button>
-          </div>
-        }
-
       </div>
     </aside>
 
   </div><!-- /detail-layout -->
   </div><!-- /detail-section--light -->
+
+  <!-- Auth modal -->
+  @if (showAuthModal()) {
+    <app-auth-modal
+      [initialView]="authModalView()"
+      (closed)="showAuthModal.set(false)"
+      (loggedIn)="onAuthSuccess()">
+    </app-auth-modal>
+  }
+
+  <!-- Payment modal -->
+  @if (showPayment()) {
+    <app-payment
+      [precioCentimos]="totalPriceCentimos()"
+      [tokenPrerreserva]="eventSvc.getPrereservaToken()"
+      (closed)="showPayment.set(false)"
+      (success)="onPaymentSuccess($event)">
+    </app-payment>
+  }
+
 }
