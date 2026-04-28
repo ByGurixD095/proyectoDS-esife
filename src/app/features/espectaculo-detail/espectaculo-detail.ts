@@ -38,7 +38,7 @@ export interface SeatCell {
 @Component({
   selector: 'app-espectaculo-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, AuthModalComponent],
+  imports: [CommonModule, RouterModule, AuthModalComponent, PaymentComponent],
   templateUrl: './espectaculo-detail.html',
   styleUrls: ['./espectaculo-detail.css']
 })

@@ -122,7 +122,6 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
     this.stripe   = Stripe(STRIPE_PK);
     this.elements = this.stripe.elements();
 
-    // Estilos del campo — Apple design system sobre fondo oscuro
     this.cardElement = this.elements.create('card', {
       style: {
         base: {
@@ -142,14 +141,13 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
       hidePostalCode: true,
     });
 
+    this.step.set('form');
     // Espera al siguiente ciclo para que el DOM esté listo
     setTimeout(() => {
       const mountPoint = document.getElementById('stripe-card-element');
       if (mountPoint) {
         this.cardElement.mount(mountPoint);
-        this.step.set('form');
 
-        // Escucha errores de validación en tiempo real
         this.cardElement.on('change', (event: any) => {
           this.errorMsg.set(event.error?.message ?? null);
         });
