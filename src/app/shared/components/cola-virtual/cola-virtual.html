@@ -1,0 +1,131 @@
+<!-- Backdrop -->
+<div class="cola-backdrop" (click)="abandonar()">
+  <div class="cola-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+    <!-- ══ LOADING ══════════════════════════════════════════ -->
+    @if (loading()) {
+      <div class="cola-state">
+        <div class="cola-spinner"></div>
+        <p>Uniéndote a la cola…</p>
+      </div>
+    }
+
+    <!-- ══ ERROR ════════════════════════════════════════════ -->
+    @if (error()) {
+      <div class="cola-state cola-state--error">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p>{{ error() }}</p>
+        <button class="cola-btn cola-btn--ghost" (click)="cerrar.emit()">Volver</button>
+      </div>
+    }
+
+    <!-- ══ EN COLA — ESPERANDO ══════════════════════════════ -->
+    @if (!loading() && !error() && estado() && !esTuTurno() && !expirado() && !completado()) {
+      <div class="cola-waiting">
+
+        <div class="cola-header">
+          <div class="cola-icon cola-icon--waiting">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h2 class="cola-title">Cola virtual</h2>
+          <p class="cola-sub">Estás reservado en la cola. Te avisaremos cuando sea tu turno.</p>
+        </div>
+
+        <!-- Posicion -->
+        <div class="cola-position">
+          <span class="cola-position__number">{{ estado()!.posicion }}</span>
+          <span class="cola-position__label">tu posición</span>
+        </div>
+
+        <!-- Gente delante -->
+        <div class="cola-info">
+          <div class="cola-info__item">
+            <span class="cola-info__val">{{ estado()!.usuariosDelante }}</span>
+            <span class="cola-info__lbl">personas delante</span>
+          </div>
+        </div>
+
+        <p class="cola-note">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Actualizando cada 10 segundos
+        </p>
+
+        <button class="cola-btn cola-btn--ghost" (click)="abandonar()">
+          Abandonar cola
+        </button>
+
+      </div>
+    }
+
+    <!-- ══ ES TU TURNO ══════════════════════════════════════ -->
+    @if (!loading() && !error() && esTuTurno()) {
+      <div class="cola-active">
+
+        <div class="cola-header">
+          <div class="cola-icon cola-icon--active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h2 class="cola-title cola-title--active">¡Es tu turno!</h2>
+          <p class="cola-sub">Tienes 5 minutos para completar la compra.</p>
+        </div>
+
+        <!-- Countdown -->
+        @if (minutosRestantes() !== null) {
+          <div class="cola-countdown">
+            <span class="cola-countdown__time">{{ minutosRestantes() }}</span>
+            <span class="cola-countdown__label">tiempo restante</span>
+          </div>
+        }
+
+        <button class="cola-btn cola-btn--primary" (click)="cerrar.emit()">
+          Ir a comprar
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+
+      </div>
+    }
+
+    <!-- ══ TURNO EXPIRADO ════════════════════════════════════ -->
+    @if (!loading() && !error() && expirado()) {
+      <div class="cola-state cola-state--expired">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff9500" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <h2 class="cola-title">Turno expirado</h2>
+        <p>No completaste la compra a tiempo. Puedes volverte a unir a la cola.</p>
+        <button class="cola-btn cola-btn--ghost" (click)="cerrar.emit()">Cerrar</button>
+      </div>
+    }
+
+    <!-- ══ COMPLETADO ════════════════════════════════════════ -->
+    @if (!loading() && !error() && completado()) {
+      <div class="cola-state cola-state--done">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <h2 class="cola-title">¡Compra completada!</h2>
+        <p>Tu posición en la cola se ha liberado.</p>
+        <button class="cola-btn cola-btn--ghost" (click)="cerrar.emit()">Cerrar</button>
+      </div>
+    }
+
+  </div>
+</div>
