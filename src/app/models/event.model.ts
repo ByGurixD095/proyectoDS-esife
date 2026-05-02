@@ -57,6 +57,21 @@ export interface ReservaResponse {
   expiraEn: string;
 }
 
+// ── EntradaComprada ───────────────────────────────────────
+export interface EntradaComprada {
+  id: number;
+  tipo: 'ZONA' | 'PRECISA';
+  precio: number;
+  espectaculoId: number;
+  artista: string;
+  fechaEspectaculo: string;
+  escenario: string;
+  planta?: number;
+  fila?: number;
+  columna?: number;
+  zona?: number;
+}
+
 // ── Cola ──────────────────────────────────────────────────────
 // Matches: ColaResponse { colaId, posicion, usuariosDelante, estadoCola }
 export interface ColaResponse {

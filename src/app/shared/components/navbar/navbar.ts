@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { AuthService }  from '../../../services/auth.service';
 import { EventService } from '../../../services/event.service';
 import { AuthModalComponent, AuthView } from '../auth-modal/auth-modal';
+import { ProfileModalComponent } from '../profile-modal/profile-modal';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, AuthModalComponent],
+  imports: [CommonModule, AuthModalComponent, ProfileModalComponent],
   templateUrl: './navbar.html',
   styleUrls: ['./navbar.css']
 })
@@ -24,9 +25,12 @@ export class NavbarComponent {
   // ── Cart dropdown ─────────────────────────────────────────
   showCart = signal(false);
 
+  showProfile = signal(false);
+
   get cartCount(): number {
     return this.eventSvc.cartIds().size;
   }
+
 
   // Agrupa las entradas del carrito por espectáculo
   // para poder mostrar el nombre y construir el enlace
@@ -98,4 +102,6 @@ export class NavbarComponent {
   }
 
   closeModal(): void { this.showModal.set(false); }
+  openProfile(): void  { this.showProfile.set(true); }
+  closeProfile(): void { this.showProfile.set(false); }
 }

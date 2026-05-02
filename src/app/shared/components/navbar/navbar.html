@@ -90,9 +90,15 @@
 
     <!-- ── Auth ───────────────────────────────────────────── -->
     @if (auth.isLoggedIn()) {
+    <button class="navbar__user-btn" (click)="openProfile()">
+      <span class="navbar__user-avatar">{{ auth.getEmail()!.charAt(0).toUpperCase() }}</span>
       <span class="navbar__user-email">{{ auth.getEmail() }}</span>
-      <button class="btn btn--ghost" (click)="auth.logout()">Salir</button>
-    } @else {
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </button>
+    <button class="btn btn--ghost" (click)="auth.logout()">Salir</button>
+  } @else {
       <button class="btn btn--ghost" (click)="openLogin()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -107,6 +113,10 @@
 
   </div>
 </nav>
+
+@if (showProfile()) {
+  <app-profile-modal (closed)="closeProfile()"></app-profile-modal>
+}
 
 <!-- Auth modal -->
 @if (showModal()) {

@@ -83,6 +83,19 @@ export class AuthService {
     );
   }
 
+  // ── Change password ───────────────────────────────────────
+  changePassword(pwdActual: string, pwdNueva: string): Observable<void> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.getToken()}`
+    });
+    return this.http.post<void>(
+      `${API}/change-password`,
+      { pwdActual, pwdNueva },
+      { headers }
+    );
+  }
+
+
   // ── Logout ────────────────────────────────────────────────
   logout(): void {
     this._authState.set({ isLoggedIn: false, user: null });

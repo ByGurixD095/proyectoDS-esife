@@ -1,0 +1,250 @@
+<div class="profile-backdrop" (click)="close()">
+  <div class="profile-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+
+    <!-- Header -->
+    <div class="profile-modal__header">
+      <div class="profile-modal__avatar">
+        {{ email().charAt(0).toUpperCase() }}
+      </div>
+      <div class="profile-modal__identity">
+        <span class="profile-modal__email">{{ email() }}</span>
+        <span class="profile-modal__badge">Cuenta activa</span>
+      </div>
+      <button class="profile-modal__close" (click)="close()" aria-label="Cerrar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="profile-tabs">
+      <button class="profile-tab" [class.profile-tab--active]="activeTab() === 'datos'"
+              (click)="activeTab.set('datos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Mis datos
+      </button>
+      <button class="profile-tab" [class.profile-tab--active]="activeTab() === 'entradas'"
+              (click)="activeTab.set('entradas')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        Mis entradas
+      </button>
+      <button class="profile-tab" [class.profile-tab--active]="activeTab() === 'password'"
+              (click)="activeTab.set('password')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Contraseña
+      </button>
+    </div>
+
+    <!-- ══ MIS DATOS ══ -->
+    @if (activeTab() === 'datos') {
+      <div class="profile-content">
+
+        <div class="profile-info-row">
+          <span class="profile-info-label">Correo electrónico</span>
+          <span class="profile-info-value">{{ email() }}</span>
+        </div>
+
+        <div class="profile-info-row">
+          <span class="profile-info-label">Entradas compradas</span>
+          <span class="profile-info-value">{{ entradas().length }}</span>
+        </div>
+
+        @if (entradas().length > 0) {
+          <div class="profile-info-row">
+            <span class="profile-info-label">Total gastado</span>
+            <span class="profile-info-value profile-info-value--accent">
+              {{ totalGastado() | number:'1.2-2' }}€
+            </span>
+          </div>
+        }
+
+        <div class="profile-danger-zone">
+          <p class="profile-danger-zone__title">Zona de peligro</p>
+          @if (!deleteConfirm()) {
+            <button class="profile-btn profile-btn--danger" (click)="confirmDelete()">
+              Eliminar cuenta
+            </button>
+          } @else {
+            <div class="profile-delete-confirm">
+              <p class="profile-delete-confirm__text">
+                ¿Seguro que quieres eliminar tu cuenta? Esta acción no se puede deshacer.
+              </p>
+              <div class="profile-delete-confirm__btns">
+                <button class="profile-btn profile-btn--danger"
+                        [disabled]="deleteLoading()"
+                        (click)="executeDelete()">
+                  @if (deleteLoading()) { Eliminando… } @else { Sí, eliminar }
+                </button>
+                <button class="profile-btn profile-btn--ghost"
+                        (click)="cancelDelete()">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+      </div>
+    }
+
+    <!-- ══ MIS ENTRADAS ══ -->
+    @if (activeTab() === 'entradas') {
+      <div class="profile-content">
+
+        @if (loadingEntradas()) {
+          <div class="profile-loading">
+            <div class="profile-spinner"></div>
+            <span>Cargando entradas…</span>
+          </div>
+        }
+
+        @if (errorEntradas()) {
+          <div class="profile-error">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p>{{ errorEntradas() }}</p>
+            <button class="profile-btn profile-btn--ghost" (click)="loadEntradas()">Reintentar</button>
+          </div>
+        }
+
+        @if (!loadingEntradas() && !errorEntradas() && entradas().length === 0) {
+          <div class="profile-empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            <p>Aún no has comprado entradas</p>
+          </div>
+        }
+
+        @if (!loadingEntradas() && entradas().length > 0) {
+          <ul class="profile-tickets">
+            @for (e of entradas(); track e.id) {
+              <li class="profile-ticket">
+                <div class="profile-ticket__left">
+                  <span class="profile-ticket__artist">{{ e.artista }}</span>
+                  <span class="profile-ticket__venue">{{ e.escenario }}</span>
+                  <span class="profile-ticket__date">{{ fechaLabel(e.fechaEspectaculo) }}</span>
+                  <span class="profile-ticket__seat">
+                    @if (e.tipo === 'PRECISA') {
+                      Planta {{ e.planta }} · Fila {{ e.fila }} · Butaca {{ e.columna }}
+                    } @else {
+                      Zona {{ e.zona }}
+                    }
+                  </span>
+                </div>
+                <span class="profile-ticket__price">{{ e.precio | number:'1.2-2' }}€</span>
+              </li>
+            }
+          </ul>
+          <div class="profile-tickets__total">
+            <span>Total</span>
+            <span class="profile-tickets__total-amount">{{ totalGastado() | number:'1.2-2' }}€</span>
+          </div>
+        }
+
+      </div>
+    }
+
+    <!-- ══ CAMBIAR CONTRASEÑA ══ -->
+    @if (activeTab() === 'password') {
+      <div class="profile-content">
+
+        @if (pwdSuccess()) {
+          <div class="profile-success">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <p>¡Contraseña cambiada correctamente!</p>
+          </div>
+        } @else {
+
+          <div class="profile-fields">
+
+            <div class="profile-field">
+              <label class="profile-field__label">Contraseña actual</label>
+              <div class="profile-field__pwd-wrap">
+                <input class="profile-field__input"
+                       [type]="showPwd() ? 'text' : 'password'"
+                       placeholder="Tu contraseña actual"
+                       [(ngModel)]="pwdActual"
+                       autocomplete="current-password"/>
+                <button class="profile-field__eye" type="button"
+                        (click)="showPwd.set(!showPwd())">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="profile-field">
+              <label class="profile-field__label">Nueva contraseña</label>
+              <input class="profile-field__input"
+                     [type]="showPwd() ? 'text' : 'password'"
+                     placeholder="Mínimo 8 caracteres"
+                     [(ngModel)]="pwdNueva"
+                     autocomplete="new-password"/>
+            </div>
+
+            <div class="profile-field">
+              <label class="profile-field__label">Repite la nueva contraseña</label>
+              <input class="profile-field__input"
+                     [type]="showPwd() ? 'text' : 'password'"
+                     placeholder="Repite la nueva contraseña"
+                     [(ngModel)]="pwdNueva2"
+                     autocomplete="new-password"
+                     (keyup.enter)="submitChangePassword()"/>
+              @if (pwdNueva2.length > 0 && pwdNueva !== pwdNueva2) {
+                <p class="profile-field__hint--error">Las contraseñas no coinciden</p>
+              }
+            </div>
+
+          </div>
+
+          @if (pwdError()) {
+            <p class="profile-error-msg">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {{ pwdError() }}
+            </p>
+          }
+
+          <button class="profile-btn profile-btn--primary"
+                  (click)="submitChangePassword()"
+                  [disabled]="pwdLoading()">
+            @if (pwdLoading()) {
+              <span class="profile-spinner profile-spinner--sm"></span>
+              Guardando…
+            } @else {
+              Cambiar contraseña
+            }
+          </button>
+
+        }
+
+      </div>
+    }
+
+  </div>
+</div>

@@ -4,7 +4,8 @@ import { Observable, forkJoin, tap, catchError, of } from 'rxjs';
 import {
   Espectaculo, Escenario, Entrada, EntradaInfo,
   ReservaResponse, CompraResponse, ColaResponse,
-  ViewMode, EspectaculosByVenue
+  ViewMode, EspectaculosByVenue,
+  EntradaComprada
 } from '../models/event.model';
 
 const API = 'http://localhost:8080';
@@ -254,6 +255,13 @@ export class EventService {
     return this.http.post<CompraResponse>(`${API}/compras`, {
       tokenPrerreserva,
       tokenUsuario
+    });
+  }
+
+  // ── Mis entradas ──────────────────────────────────────────
+  getMisEntradas(token: string): Observable<EntradaComprada[]> {
+    return this.http.get<EntradaComprada[]>(`${API}/compras/mis-entradas`, {
+      headers: { Authorization: `Bearer ${token}` }
     });
   }
 
