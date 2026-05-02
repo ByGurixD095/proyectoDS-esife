@@ -4,15 +4,9 @@
 <section class="hero">
   <div class="hero__content">
     <p class="hero__eyebrow">Entradas para espectáculos</p>
-    <h1 class="hero__title">Tu próxima<br>experiencia.</h1>
+    <h1 class="hero__title">Tu próxima experiencia</h1>
     <p class="hero__subtitle">Encuentra y reserva entradas para los mejores espectáculos.</p>
     <app-search-bar></app-search-bar>
-    <div class="hero__tags">
-      <button class="hero__tag">Música</button>
-      <button class="hero__tag">Teatro</button>
-      <button class="hero__tag">Danza</button>
-      <button class="hero__tag">Comedia</button>
-    </div>
   </div>
 </section>
 
@@ -35,7 +29,44 @@
           </span>
         }
       </div>
-      <app-view-toggle></app-view-toggle>
+
+      <!-- ── Controles: filtro fechas + toggle de vista ── -->
+      <div class="events-section__controls">
+
+        <div class="date-range">
+          <div class="date-range__field">
+            <label class="date-range__label" for="date-from">Desde</label>
+            <input
+              id="date-from"
+              class="date-range__input"
+              type="date"
+              [value]="dateFrom"
+              (change)="onDateFrom($any($event.target).value)"
+            />
+          </div>
+          <span class="date-range__sep">—</span>
+          <div class="date-range__field">
+            <label class="date-range__label" for="date-to">Hasta</label>
+            <input
+              id="date-to"
+              class="date-range__input"
+              type="date"
+              [value]="dateTo"
+              [min]="dateFrom"
+              (change)="onDateTo($any($event.target).value)"
+            />
+          </div>
+          @if (dateFrom || dateTo) {
+            <button class="date-range__clear" (click)="clearDates()" title="Quitar filtro">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <app-view-toggle></app-view-toggle>
+      </div>
     </div>
 
     <!-- Skeleton -->
@@ -78,8 +109,8 @@
           <circle cx="11" cy="11" r="8"/>
           <path d="m21 21-4.35-4.35"/>
         </svg>
-        <p>No encontramos resultados para <strong>"{{ eventService.searchQuery() }}"</strong></p>
-        <p class="empty-state__sub">Prueba con otro artista o recinto</p>
+        <p>No encontramos resultados</p>
+        <p class="empty-state__sub">Prueba con otro artista, recinto o rango de fechas</p>
       </div>
     }
 

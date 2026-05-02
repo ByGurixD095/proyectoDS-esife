@@ -62,35 +62,6 @@
   max-width:      480px;
 }
 
-/* Tags de filtro rápido */
-.hero__tags {
-  display:         flex;
-  flex-wrap:       wrap;
-  gap:             8px;
-  justify-content: center;
-  margin-top:      4px;
-}
-
-.hero__tag {
-  font-family:    var(--font-body);
-  font-size:      14px;
-  font-weight:    400;
-  letter-spacing: -0.224px;
-  padding:        6px 16px;
-  border-radius:  var(--radius-full);
-  border:         1px solid rgba(255,255,255,0.25);
-  color:          rgba(255,255,255,0.72);
-  background:     transparent;
-  cursor:         pointer;
-  transition:     border-color 0.2s, color 0.2s, background 0.2s;
-}
-
-.hero__tag:hover {
-  border-color: rgba(255,255,255,0.6);
-  color:        #ffffff;
-  background:   rgba(255,255,255,0.08);
-}
-
 /* Sin decoración — Apple usa el producto como decoración */
 .hero__decoration { display: none; }
 .deco-ring        { display: none; }
@@ -443,5 +414,104 @@
   .events-grid--by-event,
   .skeleton-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Controls row (fecha + toggle) ──────────────────────────── */
+.events-section__controls {
+  display:     flex;
+  align-items: flex-end;
+  gap:         12px;
+  flex-wrap:   wrap;
+}
+
+/* ── Date range ──────────────────────────────────────────────── */
+.date-range {
+  display:     flex;
+  align-items: flex-end;
+  gap:         6px;
+}
+
+.date-range__field {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+}
+
+.date-range__label {
+  font-family:    var(--font-body);
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          rgba(0,0,0,0.36);
+  padding-left:   10px; /* alineado con el padding del input */
+}
+
+.date-range__input {
+  padding:        5px 10px;
+  background:     rgba(0,0,0,0.04);
+  border:         1px solid rgba(0,0,0,0.12);
+  border-radius:  var(--radius-md, 12px);
+  font-family:    var(--font-body);
+  font-size:      13px;
+  font-weight:    400;
+  letter-spacing: -0.12px;
+  color:          #1d1d1f;
+  outline:        none;
+  cursor:         pointer;
+  transition:     border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+  appearance:     none;
+  color-scheme:   light;
+}
+
+.date-range__input:hover {
+  border-color: rgba(0,0,0,0.24);
+}
+
+.date-range__input:focus {
+  border-color: var(--color-accent, #0071e3);
+  box-shadow:   0 0 0 3px rgba(0,113,227,0.12);
+}
+
+.date-range__sep {
+  font-family:    var(--font-body);
+  font-size:      13px;
+  color:          rgba(0,0,0,0.28);
+  flex-shrink:    0;
+  padding-bottom: 6px;
+}
+
+.date-range__clear {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           26px;
+  height:          26px;
+  background:      transparent;
+  border:          1px solid rgba(0,0,0,0.12);
+  border-radius:   50%;
+  color:           rgba(0,0,0,0.36);
+  cursor:          pointer;
+  transition:      all 0.15s;
+  flex-shrink:     0;
+}
+
+.date-range__clear:hover {
+  border-color: rgba(255,59,48,0.40);
+  color:        #ff3b30;
+  background:   rgba(255,59,48,0.05);
+}
+
+@media (max-width: 640px) {
+  .events-section__controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-range__input {
+    font-size: 12px;
+    padding:   4px 8px;
   }
 }

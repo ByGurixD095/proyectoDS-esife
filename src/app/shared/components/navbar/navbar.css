@@ -330,30 +330,7 @@
 }
 
 /* ── Usuario logueado ───────────────────────────────────────── */
-.navbar__user-email {
-  font-family:    var(--font-body);
-  font-size:      12px;
-  font-weight:    400;
-  letter-spacing: -0.12px;
-  color:          rgba(255,255,255,0.56);
-  max-width:      180px;
-  overflow:       hidden;
-  text-overflow:  ellipsis;
-  white-space:    nowrap;
-}
-
-/* ── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .navbar {
-    padding: 0 16px;
-  }
-
-  /* Ocultar "Crear cuenta" en móvil muy pequeño */
-  .navbar__actions .btn--primary span {
-    display: none;
-  }
-
-  .navbar__user-btn {
+.navbar__user-btn {
   display:      inline-flex;
   align-items:  center;
   gap:          8px;
@@ -397,4 +374,19 @@
   text-overflow:  ellipsis;
   white-space:    nowrap;
 }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 16px;
+  }
+
+  /* Ocultar "Crear cuenta" en móvil muy pequeño */
+  .navbar__actions .btn--primary span {
+    display: none;
+  }
+
+  .navbar__user-email {
+    display: none;
+  }
 }

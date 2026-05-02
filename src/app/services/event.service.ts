@@ -1,34 +1,26 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, tap, catchError, of } from 'rxjs';
+import { Observable, tap, catchError, of } from 'rxjs';
 import {
   Espectaculo, Escenario, Entrada, EntradaInfo,
   ReservaResponse, CompraResponse, ColaResponse,
-  ViewMode, EspectaculosByVenue,
-  EntradaComprada
+  ViewMode, EspectaculosByVenue, EntradaComprada
 } from '../models/event.model';
 
-const API = 'http://localhost:8080';
-
+const API       = 'http://localhost:8080';
 const TOKEN_KEY = 'prereserva_token';
 const IDS_KEY   = 'prereserva_ids';
 
-function loadToken(): string {
-  return sessionStorage.getItem(TOKEN_KEY) ?? '';
-}
+function loadToken(): string { return sessionStorage.getItem(TOKEN_KEY) ?? ''; }
 
 function loadIds(): Set<number> {
   try {
     const raw = sessionStorage.getItem(IDS_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as number[]);
+    return raw ? new Set(JSON.parse(raw) as number[]) : new Set();
   } catch { return new Set(); }
 }
 
-function persistToken(token: string): void {
-  sessionStorage.setItem(TOKEN_KEY, token);
-}
-
+function persistToken(token: string): void { sessionStorage.setItem(TOKEN_KEY, token); }
 function persistIds(ids: Set<number>): void {
   sessionStorage.setItem(IDS_KEY, JSON.stringify(Array.from(ids)));
 }
@@ -37,15 +29,12 @@ function persistIds(ids: Set<number>): void {
 export class EventService {
   private http = inject(HttpClient);
 
-  // ── Prereserva session state ──────────────────────────────
+  // ── Prereserva ────────────────────────────────────────────
   private _prereservaToken = signal<string>(loadToken());
   private _cartIds         = signal<Set<number>>(loadIds());
-
   prereservaToken = this._prereservaToken.asReadonly();
   cartIds         = this._cartIds.asReadonly();
 
-  // ── Cache de entradas cargadas (para el dropdown del carrito) ─
-  // El componente de detalle las registra al cargarlas
   private _cartEntradasCache: Entrada[] = [];
 
   // ── UI state ──────────────────────────────────────────────
@@ -56,6 +45,10 @@ export class EventService {
   private _loading      = signal<boolean>(false);
   private _error        = signal<string | null>(null);
 
+  // ── Date filter ───────────────────────────────────────────
+  private _dateFrom = signal<string>('');   // 'YYYY-MM-DD'
+  private _dateTo   = signal<string>('');   // 'YYYY-MM-DD'
+
   viewMode     = this._viewMode.asReadonly();
   searchQuery  = this._searchQuery.asReadonly();
   espectaculos = this._espectaculos.asReadonly();
@@ -63,14 +56,20 @@ export class EventService {
   loading      = this._loading.asReadonly();
   error        = this._error.asReadonly();
 
-  // ── Filtered / grouped espectaculos ──────────────────────
+  // ── Filtered espectaculos (search + date) ─────────────────
   filteredEspectaculos = computed(() => {
-    const q = this._searchQuery().toLowerCase().trim();
-    if (!q) return this._espectaculos();
-    return this._espectaculos().filter(e =>
-      e.artista.toLowerCase().includes(q) ||
-      e.escenario.toLowerCase().includes(q)
-    );
+    const q    = this._searchQuery().toLowerCase().trim();
+    const from = this._dateFrom() ? new Date(this._dateFrom() + 'T00:00:00') : null;
+    const to   = this._dateTo()   ? new Date(this._dateTo()   + 'T23:59:59') : null;
+
+    return this._espectaculos().filter(e => {
+      if (q && !e.artista.toLowerCase().includes(q) &&
+               !e.escenario.toLowerCase().includes(q)) return false;
+      const fecha = new Date(e.fecha);
+      if (from && fecha < from) return false;
+      if (to   && fecha > to)   return false;
+      return true;
+    });
   });
 
   espectaculosByVenue = computed((): EspectaculosByVenue[] => {
@@ -83,6 +82,17 @@ export class EventService {
       escenarioNombre, espectaculos
     }));
   });
+
+  // ── Date filter actions ───────────────────────────────────
+  setDateRange(from: string, to: string): void {
+    this._dateFrom.set(from);
+    this._dateTo.set(to);
+  }
+
+  clearDateFilter(): void {
+    this._dateFrom.set('');
+    this._dateTo.set('');
+  }
 
   // ── View / search ─────────────────────────────────────────
   setViewMode(mode: ViewMode): void { this._viewMode.set(mode); }
@@ -145,21 +155,16 @@ export class EventService {
     return this.http.get<number>(`${API}/espectaculos/${espectaculoId}/entradas/cantidad`);
   }
 
-  // ── Cart dropdown helpers ─────────────────────────────────
-
-  // El detalle registra sus entradas cargadas para que el dropdown
-  // pueda mostrarlas desde cualquier página
+  // ── Cart helpers ──────────────────────────────────────────
   registerLoadedEntradas(entradas: Entrada[]): void {
     this._cartEntradasCache = entradas;
   }
 
-  // Devuelve las entradas en carrito (con datos completos si están cacheadas)
   getCartEntradas(): Entrada[] {
     const cartIds = this._cartIds();
     return this._cartEntradasCache.filter(e => cartIds.has(e.id));
   }
 
-  // Devuelve el espectaculoId de las entradas en carrito
   getCartEspectaculoId(): number | null {
     const cartIds = this._cartIds();
     if (!cartIds.size) return null;
@@ -197,22 +202,13 @@ export class EventService {
     return new Observable(observer => {
       if (!token || !this._cartIds().has(entradaId)) {
         this._removeLocalId(entradaId);
-        observer.next();
-        observer.complete();
-        return;
+        observer.next(); observer.complete(); return;
       }
       this.http.delete<void>(
         `${API}/espectaculos/${espectaculoId}/entradas/${entradaId}/prerreservar/${token}`
       ).subscribe({
-        next: () => {
-          this._removeLocalId(entradaId);
-          observer.next();
-          observer.complete();
-        },
-        error: err => {
-          this._removeLocalId(entradaId);
-          observer.error(err);
-        }
+        next: () => { this._removeLocalId(entradaId); observer.next(); observer.complete(); },
+        error: err => { this._removeLocalId(entradaId); observer.error(err); }
       });
     });
   }
@@ -222,10 +218,7 @@ export class EventService {
     ids.delete(entradaId);
     this._cartIds.set(ids);
     persistIds(ids);
-    if (ids.size === 0) {
-      this._prereservaToken.set('');
-      sessionStorage.removeItem(TOKEN_KEY);
-    }
+    if (ids.size === 0) { this._prereservaToken.set(''); sessionStorage.removeItem(TOKEN_KEY); }
   }
 
   restoreCartIds(ids: number[]): void {
@@ -234,13 +227,8 @@ export class EventService {
     persistIds(set);
   }
 
-  isInCart(entradaId: number): boolean {
-    return this._cartIds().has(entradaId);
-  }
-
-  getPrereservaToken(): string {
-    return this._prereservaToken();
-  }
+  isInCart(entradaId: number): boolean  { return this._cartIds().has(entradaId); }
+  getPrereservaToken(): string           { return this._prereservaToken(); }
 
   clearCart(): void {
     this._prereservaToken.set('');
@@ -252,13 +240,9 @@ export class EventService {
 
   // ── Compra ────────────────────────────────────────────────
   comprar(tokenPrerreserva: string, tokenUsuario: string): Observable<CompraResponse> {
-    return this.http.post<CompraResponse>(`${API}/compras`, {
-      tokenPrerreserva,
-      tokenUsuario
-    });
+    return this.http.post<CompraResponse>(`${API}/compras`, { tokenPrerreserva, tokenUsuario });
   }
 
-  // ── Mis entradas ──────────────────────────────────────────
   getMisEntradas(token: string): Observable<EntradaComprada[]> {
     return this.http.get<EntradaComprada[]>(`${API}/compras/mis-entradas`, {
       headers: { Authorization: `Bearer ${token}` }
