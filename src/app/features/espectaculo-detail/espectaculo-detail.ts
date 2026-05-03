@@ -246,10 +246,12 @@ export class EspectaculoDetailComponent implements OnInit {
     const cached = this.eventSvc.espectaculos().find(e => e.id === id);
     if (cached) {
       this.espectaculo.set(cached);
+      console.log('[Cola] colaActiva desde caché:', cached.colaActiva);
       this._checkCola(cached.colaActiva);
     } else {
       this.eventSvc.getEspectaculoById(id).subscribe({
         next: data => {
+          console.log('[Cola] colaActiva desde API:', data.colaActiva)
           this.espectaculo.set(data);
           this._checkCola(data.colaActiva);
         },
