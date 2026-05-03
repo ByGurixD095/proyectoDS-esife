@@ -112,6 +112,13 @@
     </div>
   </header>
 
+  @if (showCola()) {
+    <app-cola-virtual
+      [espectaculoId]="espectaculoId"
+      (turnoActivo)="onTurnoActivo()"
+      (cerrar)="onColaCerrada()">
+    </app-cola-virtual>
+  }
   <!-- ══════════════════════════════════════════════════════════
        LAYOUT PRINCIPAL — fondo #f5f5f7
   ══════════════════════════════════════════════════════════ -->

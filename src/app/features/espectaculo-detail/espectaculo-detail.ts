@@ -11,6 +11,7 @@ import {
 } from '../../models/event.model';
 import { AuthModalComponent, AuthView } from '../../shared/components/auth-modal/auth-modal';
 import { PaymentComponent } from '../../shared/components/payment/payment';
+import { ColaVirtualComponent } from '../../shared/components/cola-virtual/cola-virtual';
 
 export interface ZonaGroup {
   zona: number;
@@ -38,7 +39,7 @@ export interface SeatCell {
 @Component({
   selector: 'app-espectaculo-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, AuthModalComponent, PaymentComponent],
+  imports: [CommonModule, RouterModule, AuthModalComponent, PaymentComponent, ColaVirtualComponent],
   templateUrl: './espectaculo-detail.html',
   styleUrls: ['./espectaculo-detail.css']
 })
@@ -55,7 +56,13 @@ export class EspectaculoDetailComponent implements OnInit {
   loading     = signal(true);
   error       = signal<string | null>(null);
 
-  private espectaculoId = 0;
+  espectaculoId = 0;
+
+  // ── Cola virtual ──────────────────────────────────────────
+  // true  = mostrar cola (bloqueando picker y compra)
+  // false = turno activo o cola no activa, mostrar picker normal
+  showCola     = signal(false);
+  turnoActivo  = signal(false);
 
   // ── Per-seat loading/error state ──────────────────────────
   pendingIds = signal<Set<number>>(new Set());
@@ -71,19 +78,17 @@ export class EspectaculoDetailComponent implements OnInit {
   purchaseStep = signal<'idle' | 'confirming' | 'processing' | 'done' | 'error'>('idle');
   purchaseMsg  = signal('');
 
-  // ── Auth modal (se abre cuando intenta comprar sin sesión) ─
+  // ── Auth modal ─────────────────────────────────────────────
   showAuthModal = signal(false);
   authModalView = signal<AuthView>('login');
 
   // ── Payment modal ─────────────────────────────────────────
   showPayment = signal(false);
 
-  // Precio total en céntimos para Stripe
   totalPriceCentimos = computed(() =>
     Math.round(this.cartEntradas().reduce((s, e) => s + e.precio, 0) * 100)
   );
 
-  // ── Accent color ──────────────────────────────────────────
   accentColor = computed((): string => {
     const esp = this.espectaculo();
     if (!esp) return '#0071e3';
@@ -96,7 +101,6 @@ export class EspectaculoDetailComponent implements OnInit {
     return palette[hash % palette.length];
   });
 
-  // ── Split entradas by type ────────────────────────────────
   entradasZona = computed((): EntradaDeZona[] =>
     this.entradas().filter((e): e is EntradaDeZona => e.tipo === 'ZONA')
   );
@@ -106,7 +110,6 @@ export class EspectaculoDetailComponent implements OnInit {
   hasZona    = computed(() => this.entradasZona().length > 0);
   hasPrecisa = computed(() => this.entradasPrecisas().length > 0);
 
-  // ── Zona groups ───────────────────────────────────────────
   zonaGroups = computed((): ZonaGroup[] => {
     const map = new Map<number, EntradaDeZona[]>();
     for (const e of this.entradasZona()) {
@@ -180,13 +183,11 @@ export class EspectaculoDetailComponent implements OnInit {
     return this.zonaPriceGroups()[idx]?.label ?? '';
   });
 
-  // ── Plantas ───────────────────────────────────────────────
   plantas = computed((): number[] => {
     const set = new Set(this.entradasPrecisas().map(e => e.planta));
     return Array.from(set).sort((a, b) => a - b);
   });
 
-  // ── Seat grid ─────────────────────────────────────────────
   seatGrid = computed((): SeatCell[][] => {
     const planta = this.selectedPlanta() ?? this.plantas()[0];
     if (planta === undefined) return [];
@@ -215,14 +216,12 @@ export class EspectaculoDetailComponent implements OnInit {
     return grid;
   });
 
-  // ── Cart ──────────────────────────────────────────────────
   cartEntradas  = computed((): Entrada[] =>
     this.entradas().filter(e => this.eventSvc.isInCart(e.id))
   );
   totalPrice    = computed(() => this.cartEntradas().reduce((s, e) => s + e.precio, 0));
   selectionCount = computed(() => this.cartEntradas().length);
 
-  // ── Hero helpers ──────────────────────────────────────────
   fechaLabel = computed((): string => {
     const esp = this.espectaculo();
     if (!esp) return '';
@@ -245,11 +244,18 @@ export class EspectaculoDetailComponent implements OnInit {
     this.espectaculoId = id;
 
     const cached = this.eventSvc.espectaculos().find(e => e.id === id);
-    if (cached) this.espectaculo.set(cached);
-    else this.eventSvc.getEspectaculoById(id).subscribe({
-      next: data => this.espectaculo.set(data),
-      error: () => {}
-    });
+    if (cached) {
+      this.espectaculo.set(cached);
+      this._checkCola(cached.colaActiva);
+    } else {
+      this.eventSvc.getEspectaculoById(id).subscribe({
+        next: data => {
+          this.espectaculo.set(data);
+          this._checkCola(data.colaActiva);
+        },
+        error: () => {}
+      });
+    }
 
     this.eventSvc.getEntradasByEspectaculo(id).subscribe({
       next: libres => {
@@ -259,7 +265,7 @@ export class EspectaculoDetailComponent implements OnInit {
 
         if (!prereservadasIds.length) {
           this.entradas.set(libres);
-          this.eventSvc.registerLoadedEntradas(libres); // ← expone al dropdown
+          this.eventSvc.registerLoadedEntradas(libres);
           this.loading.set(false);
           this._initTabAndPlanta(libres);
           return;
@@ -271,7 +277,7 @@ export class EspectaculoDetailComponent implements OnInit {
           next: prereservadas => {
             const todas = [...libres, ...prereservadas.filter(e => e.espectaculoId === id)];
             this.entradas.set(todas);
-            this.eventSvc.registerLoadedEntradas(todas); // ← expone al dropdown
+            this.eventSvc.registerLoadedEntradas(todas);
             this.loading.set(false);
             this._initTabAndPlanta(todas);
           },
@@ -295,6 +301,20 @@ export class EspectaculoDetailComponent implements OnInit {
     });
   }
 
+  // Si la cola está activa y el usuario está logueado, mostramos la cola
+  // Si no está logueado, primero pedimos login
+  private _checkCola(colaActiva: boolean): void {
+    if (!colaActiva) return;
+
+    if (!this.authSvc.isLoggedIn()) {
+      // Pedimos login primero, cuando vuelva se mostrará la cola
+      this.authModalView.set('login');
+      this.showAuthModal.set(true);
+    } else {
+      this.showCola.set(true);
+    }
+  }
+
   private _initTabAndPlanta(entradas: Entrada[]): void {
     const hasZ = entradas.some(e => e.tipo === 'ZONA');
     const hasP = entradas.some(e => e.tipo === 'PRECISA');
@@ -305,6 +325,18 @@ export class EspectaculoDetailComponent implements OnInit {
       ).sort((a, b) => a - b);
       if (plantas.length) this.selectedPlanta.set(plantas[0]);
     }
+  }
+
+  // ── Cola callbacks ────────────────────────────────────────
+  onTurnoActivo(): void {
+    // El usuario ya tiene su turno — ocultamos la cola y mostramos el picker
+    this.turnoActivo.set(true);
+    this.showCola.set(false);
+  }
+
+  onColaCerrada(): void {
+    // El usuario abandonó la cola — volvemos atrás
+    this.router.navigate(['/']);
   }
 
   // ── Navigation ────────────────────────────────────────────
@@ -356,7 +388,13 @@ export class EspectaculoDetailComponent implements OnInit {
 
   onAuthSuccess(): void {
     this.showAuthModal.set(false);
-    this.showPayment.set(true);
+    // Si la cola estaba activa, ahora que está logueado la mostramos
+    const esp = this.espectaculo();
+    if (esp?.colaActiva && !this.turnoActivo()) {
+      this.showCola.set(true);
+    } else {
+      this.showPayment.set(true);
+    }
   }
 
   onPaymentSuccess(msg: string): void {
@@ -369,16 +407,13 @@ export class EspectaculoDetailComponent implements OnInit {
 
   processPurchase(): void {
     this.purchaseStep.set('processing');
-
     const prereservaToken = this.eventSvc.getPrereservaToken();
     if (!prereservaToken) {
       this.purchaseStep.set('error');
       this.purchaseMsg.set('No hay una sesión de prerreserva activa.');
       return;
     }
-
     const userToken = this.authSvc.getToken() ?? '';
-
     this.eventSvc.comprar(prereservaToken, userToken).subscribe({
       next: result => {
         this.purchaseStep.set('done');
@@ -414,7 +449,6 @@ export class EspectaculoDetailComponent implements OnInit {
     });
   }
 
-  // ── Template helpers ──────────────────────────────────────
   cancelarEntrada(entradaId: number): void { this._cancelar(entradaId); }
   isInCart(id: number): boolean  { return this.eventSvc.isInCart(id); }
   isPending(id: number): boolean { return this.pendingIds().has(id); }

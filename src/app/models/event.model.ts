@@ -13,6 +13,7 @@ export interface Espectaculo {
   artista: string;
   fecha: string;          // ISO-8601: "2026-03-14T21:00:00"
   escenario: string;      // nombre del escenario (ya mapeado en backend)
+  colaActiva:boolean;
 }
 
 // ── Entrada base ──────────────────────────────────────────────
