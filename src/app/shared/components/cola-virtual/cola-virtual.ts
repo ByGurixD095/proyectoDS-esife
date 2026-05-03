@@ -131,7 +131,7 @@ export class ColaVirtualComponent implements OnInit, OnDestroy {
     this.estado.set(res);
 
     if (res.esTuTurno) {
-      this._stopPolling(); // ya no necesitamos polling
+      this._stopPolling();
       this._iniciarCountdown(res.expiraTurnoEn);
       this.turnoActivo.emit();
     }
