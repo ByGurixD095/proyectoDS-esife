@@ -1,3 +1,5 @@
+// cola-mock.interceptor.ts
+
 import { Injectable } from '@angular/core';
 import {
   HttpInterceptor, HttpRequest, HttpHandler,
@@ -5,66 +7,48 @@ import {
 } from '@angular/common/http';
 import { Observable, of, delay } from 'rxjs';
 
-// ══ ÚNICO VALOR QUE PUEDES AJUSTAR ════════════════════════════
-const POSICION_INICIAL = 5;
+// ══ Cuántos polls hasta activar el turno ══════════════════════
+const POLLS_HASTA_TURNO = 4;
 // ══════════════════════════════════════════════════════════════
 
-interface ColaState {
-  posicion: number;
-  estado: 'ESPERANDO' | 'ACTIVO';
-  turnoActivadoEn: string | null;
+interface MockPollState {
+  pollCount: number;
+  activo: boolean;
+  activadoEn: string | null;
 }
 
-// Un estado por espectaculoId — así funciona con cualquier espectáculo
-const estados = new Map<number, ColaState>();
+const pollStates = new Map<number, MockPollState>();
 
-function getState(id: number): ColaState {
-  if (!estados.has(id)) {
-    estados.set(id, {
-      posicion:        POSICION_INICIAL,
-      estado:          'ESPERANDO',
-      turnoActivadoEn: null,
-    });
+function getState(id: number): MockPollState {
+  if (!pollStates.has(id)) {
+    pollStates.set(id, { pollCount: 0, activo: false, activadoEn: null });
   }
-  return estados.get(id)!;
+  return pollStates.get(id)!;
 }
 
 function resetState(id: number): void {
-  estados.set(id, {
-    posicion:        POSICION_INICIAL,
-    estado:          'ESPERANDO',
-    turnoActivadoEn: null,
-  });
-}
-
-function avanzar(id: number): void {
-  const s = getState(id);
-  if (s.estado !== 'ESPERANDO') return;
-  s.posicion = Math.max(1, s.posicion - 1);
-  if (s.posicion === 1) {
-    s.estado          = 'ACTIVO';
-    s.turnoActivadoEn = new Date().toISOString();
-  }
+  pollStates.delete(id);
 }
 
 function buildBody(id: number): object {
-  const s         = getState(id);
-  const esTuTurno = s.estado === 'ACTIVO';
-  const expira    = esTuTurno && s.turnoActivadoEn
-    ? new Date(new Date(s.turnoActivadoEn).getTime() + 5 * 60 * 1000).toISOString()
+  const s = getState(id);
+  const posicion = Math.max(1, POLLS_HASTA_TURNO - s.pollCount + 1);
+  const delante = Math.max(0, posicion - 1);
+  const esTuTurno = s.activo;
+  const expira = esTuTurno && s.activadoEn
+    ? new Date(new Date(s.activadoEn).getTime() + 5 * 60 * 1000).toISOString()
     : null;
 
   return {
     colaId:          99,
-    posicion:        s.posicion,
-    usuariosDelante: esTuTurno ? 0 : s.posicion - 1,
-    estadoCola:      s.estado,
+    posicion:        esTuTurno ? 1 : posicion,
+    usuariosDelante: esTuTurno ? 0 : delante,
+    estadoCola:      esTuTurno ? 'ACTIVO' : 'ESPERANDO',
     esTuTurno,
     expiraTurnoEn:   expira,
   };
 }
 
-// Extrae el ID del espectáculo de la URL: /espectaculos/42/cola
 function extraerEspectaculoId(url: string): number | null {
   const match = url.match(/\/espectaculos\/(\d+)\/cola/);
   return match ? Number(match[1]) : null;
@@ -77,34 +61,33 @@ export class ColaMockInterceptor implements HttpInterceptor {
 
     const espectaculoId = extraerEspectaculoId(req.url);
 
-    // Si la URL no es de cola, deja pasar la petición al backend real
     if (espectaculoId === null) return next.handle(req);
 
-    // POST → el usuario se une: inicializa o resetea el estado de ese espectáculo
+    // POST → deja pasar al backend real para que guarde en cola_virtual
+    // Solo reseteamos el estado del mock local
     if (req.method === 'POST') {
       resetState(espectaculoId);
-      return of(new HttpResponse({ status: 200, body: buildBody(espectaculoId) }))
-        .pipe(delay(350));
+      return next.handle(req);  // ← pasa al backend
     }
 
-    // GET → polling: avanza un puesto y devuelve el estado actual
-    if (req.method === 'GET') {
-      avanzar(espectaculoId);
-      return of(new HttpResponse({ status: 200, body: buildBody(espectaculoId) }))
-        .pipe(delay(350));
-    }
-
-    // DELETE → el usuario abandona: limpia el estado
+    // DELETE → deja pasar al backend real para limpiar cola_virtual
     if (req.method === 'DELETE') {
       resetState(espectaculoId);
-      return of(new HttpResponse({
-        status: 200,
-        body: {
-          colaId: null, posicion: null,
-          usuariosDelante: 0, estadoCola: 'ABANDONADO',
-          esTuTurno: false, expiraTurnoEn: null
+      return next.handle(req);  // ← pasa al backend
+    }
+
+    // GET → mock que avanza la posición rápidamente para la demo
+    if (req.method === 'GET') {
+      const s = getState(espectaculoId);
+      if (!s.activo) {
+        s.pollCount++;
+        if (s.pollCount >= POLLS_HASTA_TURNO) {
+          s.activo = true;
+          s.activadoEn = new Date().toISOString();
         }
-      })).pipe(delay(200));
+      }
+      return of(new HttpResponse({ status: 200, body: buildBody(espectaculoId) }))
+        .pipe(delay(350));
     }
 
     return next.handle(req);
