@@ -405,30 +405,6 @@ export class EspectaculoDetailComponent implements OnInit {
     this.purchaseMsg.set(msg);
   }
 
-  cancelConfirm(): void { this.purchaseStep.set('idle'); }
-
-  processPurchase(): void {
-    this.purchaseStep.set('processing');
-    const prereservaToken = this.eventSvc.getPrereservaToken();
-    if (!prereservaToken) {
-      this.purchaseStep.set('error');
-      this.purchaseMsg.set('No hay una sesión de prerreserva activa.');
-      return;
-    }
-    const userToken = this.authSvc.getToken() ?? '';
-    this.eventSvc.comprar(prereservaToken, userToken).subscribe({
-      next: result => {
-        this.purchaseStep.set('done');
-        this.purchaseMsg.set(result.mensaje);
-        this.eventSvc.clearCart();
-      },
-      error: () => {
-        this.purchaseStep.set('error');
-        this.purchaseMsg.set('Error al procesar la compra. Inténtalo de nuevo.');
-      }
-    });
-  }
-
   // ── API calls ─────────────────────────────────────────────
   private _prereservar(entradaId: number): void {
     this._setPending(entradaId, true);

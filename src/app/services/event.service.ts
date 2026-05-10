@@ -238,11 +238,6 @@ export class EventService {
     sessionStorage.removeItem(IDS_KEY);
   }
 
-  // ── Compra ────────────────────────────────────────────────
-  comprar(tokenPrerreserva: string, tokenUsuario: string): Observable<CompraResponse> {
-    return this.http.post<CompraResponse>(`${API}/compras`, { tokenPrerreserva, tokenUsuario });
-  }
-
   getMisEntradas(token: string): Observable<EntradaComprada[]> {
     return this.http.get<EntradaComprada[]>(`${API}/compras/mis-entradas`, {
       headers: { Authorization: `Bearer ${token}` }

@@ -111,11 +111,15 @@ export class PaymentComponent implements AfterViewInit, OnDestroy {
       },
       error: err => {
         this.step.set('error');
-        this.errorMsg.set(
-          err.status === 401
-            ? 'Sesión expirada. Vuelve a iniciar sesión.'
-            : 'Error al inicializar el pago. Inténtalo de nuevo.'
-        );
+        if (err.status === 401) {
+          this.errorMsg.set('Sesión expirada. Vuelve a iniciar sesión.');
+        } else if (err.status === 403) {
+          this.errorMsg.set(
+            err.error?.message ?? 'Aún no es tu turno en la cola. Espera a que te toque.'
+          );
+        } else {
+          this.errorMsg.set('Error al inicializar el pago. Inténtalo de nuevo.');
+        }
       }
     });
   }

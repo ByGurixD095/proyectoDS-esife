@@ -76,10 +76,12 @@ export interface EntradaComprada {
 // ── Cola ──────────────────────────────────────────────────────
 // Matches: ColaResponse { colaId, posicion, usuariosDelante, estadoCola }
 export interface ColaResponse {
-  colaId: number;
-  posicion: number;
+  colaId: number | null;
+  posicion: number | null;
   usuariosDelante: number;
   estadoCola: string;
+  esTuTurno: boolean;
+  expiraTurnoEn: string | null;
 }
 
 // ── Compra ────────────────────────────────────────────────────

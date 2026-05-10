@@ -105,8 +105,8 @@ export class AuthModalComponent {
       this.error.set('Las contraseñas no coinciden.');
       return;
     }
-    if (this.regPwd1.length < 8) {
-      this.error.set('La contraseña debe tener al menos 8 caracteres.');
+    if (this.regPwd1.length < 12) {
+      this.error.set('La contraseña debe tener al menos 12 caracteres.');
       return;
     }
 
@@ -180,8 +180,8 @@ export class AuthModalComponent {
       this.error.set('Las contraseñas no coinciden.');
       return;
     }
-    if (this.resetPwd.length < 8) {
-      this.error.set('La contraseña debe tener al menos 8 caracteres.');
+    if (this.resetPwd.length < 12) {
+      this.error.set('La contraseña debe tener al menos 12 caracteres.');
       return;
     }
     this.loading.set(true);
@@ -203,7 +203,7 @@ export class AuthModalComponent {
 
   // ── Password strength ─────────────────────────────────────
   pwdStrength(pwd: string): 'weak' | 'medium' | 'strong' {
-    if (pwd.length < 8)  return 'weak';
+    if (pwd.length < 12)  return 'weak';
     const hasUpper   = /[A-Z]/.test(pwd);
     const hasNumber  = /[0-9]/.test(pwd);
     const hasSpecial = /[^A-Za-z0-9]/.test(pwd);

@@ -6,18 +6,10 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../services/auth.service';
+import { ColaResponse } from '../../../models/event.model';
 
 const API = 'http://localhost:8080';
 const POLL_INTERVAL_MS = 10000; // polling cada 10 segundos
-
-export interface ColaResponse {
-  colaId:         number | null;
-  posicion:       number | null;
-  usuariosDelante: number;
-  estadoCola:     string;
-  esTuTurno:      boolean;
-  expiraTurnoEn:  string | null;
-}
 
 @Component({
   selector: 'app-cola-virtual',
