@@ -10,7 +10,7 @@ import { Observable, from, switchMap } from 'rxjs';
 const API = 'http://localhost:8080';
 
 // ── Configuración ─────────────────────────────────────────────
-const FANTASMAS = 3; // usuarios fantasma → turno llega tras ~30 s (3 polls × 10 s)
+const FANTASMAS = 20; 
 // ─────────────────────────────────────────────────────────────
 
 const emailFantasma = (i: number, espId: number) =>
@@ -67,9 +67,12 @@ export class ColaMockInterceptor implements HttpInterceptor {
       if (state.fantasmasRestantes.length > 0 && !state.eliminando) {
         state.eliminando = true;
         const email = state.fantasmasRestantes.shift()!;
-        this._eliminarFantasma(email, espId).then(() => {
-          state.eliminando = false;
-        });
+        return from(this._eliminarFantasma(email, espId)).pipe(
+          switchMap(() => {
+            state.eliminando = false;
+            return next.handle(req);
+          })
+        );
       }
 
       return next.handle(req);

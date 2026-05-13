@@ -42,10 +42,8 @@
 
         <!-- Personas delante — este es el número que cambia con cada poll -->
         <div class="cola-position">
-          <span class="cola-position__number">{{ estado()!.usuariosDelante }}</span>
-          <span class="cola-position__label">
-            {{ estado()!.usuariosDelante === 1 ? 'persona delante' : 'Tu posición en la cola' }}
-          </span>
+          <span class="cola-position__number">{{ estado()!.usuariosDelante + 1}}</span>
+          <span class="cola-position__label">Tu posición en cola</span>
         </div>
 
         <!-- Barra de progreso visual -->
