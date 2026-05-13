@@ -37,22 +37,27 @@
             </svg>
           </div>
           <h2 class="cola-title">Cola virtual</h2>
-          <p class="cola-sub">Estás reservado en la cola. Te avisaremos cuando sea tu turno.</p>
+          <p class="cola-sub">Estás en la cola. Te avisaremos cuando sea tu turno.</p>
         </div>
 
-        <!-- Posicion -->
+        <!-- Personas delante — este es el número que cambia con cada poll -->
         <div class="cola-position">
-          <span class="cola-position__number">{{ estado()!.posicion }}</span>
-          <span class="cola-position__label">tu posición</span>
+          <span class="cola-position__number">{{ estado()!.usuariosDelante }}</span>
+          <span class="cola-position__label">
+            {{ estado()!.usuariosDelante === 1 ? 'persona delante' : 'Tu posición en la cola' }}
+          </span>
         </div>
 
-        <!-- Gente delante -->
-        <div class="cola-info">
-          <div class="cola-info__item">
-            <span class="cola-info__val">{{ estado()!.usuariosDelante }}</span>
-            <span class="cola-info__lbl">personas delante</span>
+        <!-- Barra de progreso visual -->
+        @if (totalInicial() > 0) {
+          <div class="cola-progress-wrap">
+            <div class="cola-progress-bar">
+              <div class="cola-progress-fill"
+                   [style.width.%]="progresoPercent()"></div>
+            </div>
+            <span class="cola-progress-label">{{ progresoPercent() }}% completado</span>
           </div>
-        </div>
+        }
 
         <p class="cola-note">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -83,7 +88,6 @@
           <p class="cola-sub">Tienes 5 minutos para completar la compra.</p>
         </div>
 
-        <!-- Countdown -->
         @if (minutosRestantes() !== null) {
           <div class="cola-countdown">
             <span class="cola-countdown__time">{{ minutosRestantes() }}</span>

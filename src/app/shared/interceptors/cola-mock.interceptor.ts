@@ -3,55 +3,35 @@
 import { Injectable } from '@angular/core';
 import {
   HttpInterceptor, HttpRequest, HttpHandler,
-  HttpEvent, HttpResponse
+  HttpEvent
 } from '@angular/common/http';
-import { Observable, of, delay } from 'rxjs';
+import { Observable, from, switchMap } from 'rxjs';
 
-// ══ Cuántos polls hasta activar el turno ══════════════════════
-const POLLS_HASTA_TURNO = 4;
-// ══════════════════════════════════════════════════════════════
+const API = 'http://localhost:8080';
 
-interface MockPollState {
-  pollCount: number;
-  activo: boolean;
-  activadoEn: string | null;
+// ── Configuración ─────────────────────────────────────────────
+const FANTASMAS = 3; // usuarios fantasma → turno llega tras ~30 s (3 polls × 10 s)
+// ─────────────────────────────────────────────────────────────
+
+const emailFantasma = (i: number, espId: number) =>
+  `fantasma${i}_esp${espId}@mock.internal`;
+
+interface MockState {
+  fantasmasRestantes: string[];
+  eliminando: boolean;
 }
 
-const pollStates = new Map<number, MockPollState>();
+const states = new Map<number, MockState>();
 
-function getState(id: number): MockPollState {
-  if (!pollStates.has(id)) {
-    pollStates.set(id, { pollCount: 0, activo: false, activadoEn: null });
+function getState(espId: number): MockState {
+  if (!states.has(espId)) {
+    states.set(espId, { fantasmasRestantes: [], eliminando: false });
   }
-  return pollStates.get(id)!;
+  return states.get(espId)!;
 }
 
-function resetState(id: number): void {
-  pollStates.delete(id);
-}
-
-function buildBody(id: number): object {
-  const s = getState(id);
-  const posicion = Math.max(1, POLLS_HASTA_TURNO - s.pollCount + 1);
-  const delante = Math.max(0, posicion - 1);
-  const esTuTurno = s.activo;
-  const expira = esTuTurno && s.activadoEn
-    ? new Date(new Date(s.activadoEn).getTime() + 5 * 60 * 1000).toISOString()
-    : null;
-
-  return {
-    colaId:          99,
-    posicion:        esTuTurno ? 1 : posicion,
-    usuariosDelante: esTuTurno ? 0 : delante,
-    estadoCola:      esTuTurno ? 'ACTIVO' : 'ESPERANDO',
-    esTuTurno,
-    expiraTurnoEn:   expira,
-  };
-}
-
-function extraerEspectaculoId(url: string): number | null {
-  const match = url.match(/\/espectaculos\/(\d+)\/cola/);
-  return match ? Number(match[1]) : null;
+function resetState(espId: number): void {
+  states.delete(espId);
 }
 
 @Injectable()
@@ -59,37 +39,89 @@ export class ColaMockInterceptor implements HttpInterceptor {
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
 
-    const espectaculoId = extraerEspectaculoId(req.url);
+    const match = req.url.match(/\/espectaculos\/(\d+)\/cola$/);
+    if (!match) return next.handle(req);
 
-    if (espectaculoId === null) return next.handle(req);
+    const espId = Number(match[1]);
 
-    // POST → deja pasar al backend real para que guarde en cola_virtual
-    // Solo reseteamos el estado del mock local
+    // ── POST — unirse ─────────────────────────────────────────
     if (req.method === 'POST') {
-      resetState(espectaculoId);
-      return next.handle(req);  // ← pasa al backend
+      resetState(espId);
+      const state = getState(espId);
+      state.fantasmasRestantes = Array.from(
+        { length: FANTASMAS }, (_, i) => emailFantasma(i + 1, espId)
+      );
+
+      // Extraemos el email del usuario real desde la cabecera de la petición
+      const emailUsuario = req.headers.get('X-User-Email') ?? '';
+
+      return from(this._prepararCola(emailUsuario, state.fantasmasRestantes, espId)).pipe(
+        switchMap(() => next.handle(req))
+      );
     }
 
-    // DELETE → deja pasar al backend real para limpiar cola_virtual
-    if (req.method === 'DELETE') {
-      resetState(espectaculoId);
-      return next.handle(req);  // ← pasa al backend
-    }
-
-    // GET → mock que avanza la posición rápidamente para la demo
+    // ── GET — polling ─────────────────────────────────────────
     if (req.method === 'GET') {
-      const s = getState(espectaculoId);
-      if (!s.activo) {
-        s.pollCount++;
-        if (s.pollCount >= POLLS_HASTA_TURNO) {
-          s.activo = true;
-          s.activadoEn = new Date().toISOString();
-        }
+      const state = getState(espId);
+
+      if (state.fantasmasRestantes.length > 0 && !state.eliminando) {
+        state.eliminando = true;
+        const email = state.fantasmasRestantes.shift()!;
+        this._eliminarFantasma(email, espId).then(() => {
+          state.eliminando = false;
+        });
       }
-      return of(new HttpResponse({ status: 200, body: buildBody(espectaculoId) }))
-        .pipe(delay(350));
+
+      return next.handle(req);
+    }
+
+    // ── DELETE — abandonar ────────────────────────────────────
+    if (req.method === 'DELETE') {
+      const state = getState(espId);
+      const restantes = [...state.fantasmasRestantes];
+      resetState(espId);
+      restantes.forEach(email => this._eliminarFantasma(email, espId));
+      return next.handle(req);
     }
 
     return next.handle(req);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+
+  /**
+   * 1. Borra el registro previo del usuario real (puede estar COMPLETADO/EXPIRADO).
+   * 2. Inserta los fantasmas en la cola real.
+   * El DELETE del usuario puede fallar (404 si no existía) — se ignora.
+   */
+  private async _prepararCola(emailUsuario: string, fantasmas: string[], espId: number): Promise<void> {
+    // Paso 1: limpiar registro anterior del usuario real
+    if (emailUsuario) {
+      try {
+        await fetch(`${API}/espectaculos/${espId}/cola`, {
+          method: 'DELETE',
+          headers: { 'X-User-Email': emailUsuario }
+        });
+      } catch (_) { /* ignorar */ }
+    }
+
+    // Paso 2: insertar fantasmas
+    for (const email of fantasmas) {
+      try {
+        await fetch(`${API}/espectaculos/${espId}/cola`, {
+          method: 'POST',
+          headers: { 'X-User-Email': email }
+        });
+      } catch (_) { /* ignorar */ }
+    }
+  }
+
+  private async _eliminarFantasma(email: string, espId: number): Promise<void> {
+    try {
+      await fetch(`${API}/espectaculos/${espId}/cola`, {
+        method: 'DELETE',
+        headers: { 'X-User-Email': email }
+      });
+    } catch (_) { /* ignorar */ }
   }
 }

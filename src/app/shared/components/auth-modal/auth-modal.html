@@ -142,9 +142,10 @@
                 id="reg-pwd1"
                 class="auth-field__input"
                 [type]="showPwd() ? 'text' : 'password'"
-                placeholder="Mínimo 8 caracteres"
+                placeholder="Mínimo 12 caracteres"
                 [(ngModel)]="regPwd1"
                 autocomplete="new-password"
+                
               />
               <button class="auth-field__eye" type="button"
                       (click)="showPwd.set(!showPwd())">

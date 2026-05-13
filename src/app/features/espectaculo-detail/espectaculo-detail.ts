@@ -59,10 +59,8 @@ export class EspectaculoDetailComponent implements OnInit {
   espectaculoId = 0;
 
   // ── Cola virtual ──────────────────────────────────────────
-  // true  = mostrar cola (bloqueando picker y compra)
-  // false = turno activo o cola no activa, mostrar picker normal
-  showCola     = signal(false);
-  turnoActivo  = signal(false);
+  showCola    = signal(false);
+  turnoActivo = signal(false);
 
   // ── Per-seat loading/error state ──────────────────────────
   pendingIds = signal<Set<number>>(new Set());
@@ -239,6 +237,15 @@ export class EspectaculoDetailComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────
   ngOnInit(): void {
+    // ▶ CAMBIO 1: resetear el estado de compra cada vez que se entra
+    //   al componente. Sin esto, si Angular reutiliza la instancia
+    //   tras una compra previa, el usuario seguiría viendo el mensaje
+    //   de éxito en lugar de la cola y el picker.
+    this.purchaseStep.set('idle');
+    this.purchaseMsg.set('');
+    this.turnoActivo.set(false);
+    this.showCola.set(false);
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/']); return; }
     this.espectaculoId = id;
@@ -246,12 +253,10 @@ export class EspectaculoDetailComponent implements OnInit {
     const cached = this.eventSvc.espectaculos().find(e => e.id === id);
     if (cached) {
       this.espectaculo.set(cached);
-      console.log('[Cola] colaActiva desde caché:', cached.colaActiva);
       this._checkCola(cached.colaActiva);
     } else {
       this.eventSvc.getEspectaculoById(id).subscribe({
         next: data => {
-          console.log('[Cola] colaActiva desde API:', data.colaActiva)
           this.espectaculo.set(data);
           this._checkCola(data.colaActiva);
         },
@@ -303,13 +308,10 @@ export class EspectaculoDetailComponent implements OnInit {
     });
   }
 
-  // Si la cola está activa y el usuario está logueado, mostramos la cola
-  // Si no está logueado, primero pedimos login
   private _checkCola(colaActiva: boolean): void {
     if (!colaActiva) return;
 
     if (!this.authSvc.isLoggedIn()) {
-      // Pedimos login primero, cuando vuelva se mostrará la cola
       this.authModalView.set('login');
       this.showAuthModal.set(true);
     } else {
@@ -331,13 +333,11 @@ export class EspectaculoDetailComponent implements OnInit {
 
   // ── Cola callbacks ────────────────────────────────────────
   onTurnoActivo(): void {
-    // El usuario ya tiene su turno — ocultamos la cola y mostramos el picker
     this.turnoActivo.set(true);
     this.showCola.set(false);
   }
 
   onColaCerrada(): void {
-    // El usuario abandonó la cola — volvemos atrás
     this.router.navigate(['/']);
   }
 
@@ -390,7 +390,6 @@ export class EspectaculoDetailComponent implements OnInit {
 
   onAuthSuccess(): void {
     this.showAuthModal.set(false);
-    // Si la cola estaba activa, ahora que está logueado la mostramos
     const esp = this.espectaculo();
     if (esp?.colaActiva && !this.turnoActivo()) {
       this.showCola.set(true);
@@ -403,6 +402,12 @@ export class EspectaculoDetailComponent implements OnInit {
     this.showPayment.set(false);
     this.purchaseStep.set('done');
     this.purchaseMsg.set(msg);
+
+    // ▶ CAMBIO 2: resetear el estado del turno para que la próxima vez
+    //   que el usuario entre al espectáculo vuelva a pasar por la cola
+    //   desde el principio (el interceptor reinicia en cada POST).
+    this.turnoActivo.set(false);
+    this.showCola.set(false);
   }
 
   // ── API calls ─────────────────────────────────────────────
